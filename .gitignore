@@ -1,0 +1,16 @@
+# deps / build
+node_modules
+dist
+dist-ssr
+
+# tauri / rust
+src-tauri/target
+src-tauri/gen
+
+# data locale (jamais commit : contient le coffre chiffré de l'utilisateur)
+*.local
+.env
+
+# os
+.DS_Store
+Thumbs.db

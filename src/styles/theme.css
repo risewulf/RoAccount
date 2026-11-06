@@ -1,0 +1,74 @@
+/* ============================================================
+   RoAccount — jetons de marque
+   Identité : rouge écarlate sur encre chaude. Un seul accent,
+   des neutres légèrement teintés rouge, des couleurs d'état
+   distinctes de l'accent.
+   Change UNIQUEMENT ce bloc pour re-thémer toute l'appli.
+   ============================================================ */
+:root {
+  /* marque */
+  --brand: #ff2d46;
+  --brand-ink: #ffffff;
+  --brand-600: #e51f38;
+  --brand-700: #c3122a;
+  --brand-grad: linear-gradient(145deg, #ff3b52, #d4142b);
+  --brand-glow: rgba(255, 45, 70, 0.22);
+
+  /* surfaces (sombre par défaut) */
+  --bg: #140e0d;
+  --surface: #1d1512;
+  --surface-2: #261b17;
+  --raised: #2e211b;
+  --border: #3a2a23;
+  --border-soft: #2c201a;
+
+  /* texte */
+  --fg: #f7ede7;
+  --muted: #b39a8d;
+  --faint: #7c6559;
+
+  /* états (sémantiques, hors accent) */
+  --ok: #37d08a;
+  --info: #4aa3ff;
+  --warn: #f2b541;
+  --crit: #ff6a3d;
+
+  /* typo */
+  --font-display: "Chakra Petch", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  /* formes */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 7px;
+
+  color-scheme: dark;
+}
+
+/* thème clair : l'utilisateur peut basculer ; override au niveau des jetons */
+:root[data-theme="light"] {
+  --bg: #f6efe9;
+  --surface: #fffbf7;
+  --surface-2: #f7efe8;
+  --raised: #ffffff;
+  --border: #e6d8cd;
+  --border-soft: #efe4da;
+
+  --fg: #22140f;
+  --muted: #7a6456;
+  --faint: #a68d7d;
+
+  --brand: #e01e32;
+  --brand-600: #c3122a;
+  --brand-700: #9c0f22;
+  --brand-grad: linear-gradient(145deg, #f02a3f, #c3122a);
+  --brand-glow: rgba(224, 30, 50, 0.14);
+
+  --ok: #1f9d65;
+  --info: #2f7fe0;
+  --warn: #c88a0f;
+  --crit: #d1481f;
+
+  color-scheme: light;
+}

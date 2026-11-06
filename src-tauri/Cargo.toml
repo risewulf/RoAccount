@@ -1,0 +1,44 @@
+[package]
+name = "roaccount"
+version = "0.1.0"
+description = "Gestionnaire de comptes Roblox local — coffre chiffré, lancement multi-comptes."
+authors = ["Risewulf"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "roaccount_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
+thiserror = "1"
+zeroize = { version = "1", features = ["alloc"] }
+dirs = "5"
+uuid = { version = "1", features = ["v4"] }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+
+# capture de fenêtre (Monitor → aperçu)
+xcap = "0.9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+# multi-instance, priorité des process, arrangement des fenêtres
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Com_StructuredStorage"] }
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "s"
