@@ -56,6 +56,24 @@ Count roughly 1 to 1.5 GB of RAM per client.
 - Cookie exports are plain text: store them carefully.
 - Independent project, not affiliated with Roblox Corporation. Use at your own risk: Roblox's rules apply to your accounts.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). *(Applied for — until it is approved, releases are unsigned and Windows shows "Unknown publisher".)*
+
+- Only builds produced from this repository by the [GitHub Actions workflow](.github/workflows/release.yml) are submitted for signing. Nothing is built or signed locally.
+- **Team roles:** author, reviewer and approver — [@risewulf](https://github.com/risewulf).
+- Signing requests for releases are approved manually.
+
+## Privacy policy
+
+RoAccount does not collect, track or send any personal data to the author. It stores everything locally, and only contacts:
+
+- the official `*.roblox.com` APIs, on your request (account checks, launching, servers, friends);
+- `https://roaccount.xyz/news.json`, to display the News tab (a plain download, no data is sent);
+- the Discord webhook you configure yourself, if any, to send your alerts.
+
+This program will not transfer any other information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
 ## Getting a cookie
 
 In your browser, logged in to Roblox: developer tools → Application → Cookies → `roblox.com` → copy the value of `.ROBLOSECURITY`, then paste it in **Add account**.
