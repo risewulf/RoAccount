@@ -1,57 +1,31 @@
 //! Liste des processus clients Roblox en cours, pour le Monitor.
-//! Sous Windows, via `tasklist` (fiable, sans dépendance supplémentaire).
+//!
+//! Lecture directe de la table des processus (crate `sysinfo`) : aucun
+//! sous-processus n'est lancé (avant : `tasklist`, qui faisait clignoter une
+//! fenêtre cmd toutes les quelques secondes).
 
 use crate::models::ProcInfo;
 
-#[cfg(target_os = "windows")]
 pub fn roblox_processes() -> Vec<ProcInfo> {
-    use std::process::Command;
+    use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 
-    let mut out = Vec::new();
-    for image in ["RobloxPlayerBeta.exe"] {
-        let res = Command::new("tasklist")
-            .args([
-                "/FI",
-                &format!("IMAGENAME eq {image}"),
-                "/FO",
-                "CSV",
-                "/NH",
-            ])
-            .output();
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::new().with_memory(),
+    );
 
-        if let Ok(o) = res {
-            let text = String::from_utf8_lossy(&o.stdout);
-            for line in text.lines() {
-                // Format CSV : "Image","PID","Session","Session#","Mém. utilisée"
-                let cols: Vec<String> = line
-                    .trim()
-                    .trim_matches('"')
-                    .split("\",\"")
-                    .map(|s| s.to_string())
-                    .collect();
-                if cols.len() < 5 {
-                    continue;
-                }
-                let pid = digits(&cols[1]).parse::<u32>().unwrap_or(0);
-                let mem_kb = digits(&cols[4]).parse::<u64>().unwrap_or(0);
-                out.push(ProcInfo {
-                    pid,
-                    name: cols[0].clone(),
-                    memory_mb: mem_kb / 1024,
-                });
-            }
-        }
-    }
+    let mut out: Vec<ProcInfo> = sys
+        .processes()
+        .iter()
+        .filter(|(_, p)| p.name().to_string_lossy().eq_ignore_ascii_case("RobloxPlayerBeta.exe"))
+        .map(|(pid, p)| ProcInfo {
+            pid: pid.as_u32(),
+            name: p.name().to_string_lossy().to_string(),
+            memory_mb: p.memory() / 1024 / 1024,
+        })
+        .collect();
+    out.sort_by_key(|p| p.pid);
     out
-}
-
-/// Ne garde que les chiffres d'une chaîne (ex. « 1 234 560 K » → « 1234560 »).
-#[cfg(target_os = "windows")]
-fn digits(s: &str) -> String {
-    s.chars().filter(|c| c.is_ascii_digit()).collect()
-}
-
-#[cfg(not(target_os = "windows"))]
-pub fn roblox_processes() -> Vec<ProcInfo> {
-    Vec::new()
 }

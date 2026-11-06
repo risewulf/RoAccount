@@ -132,9 +132,12 @@ fn urlencode(s: &str) -> String {
 fn open_protocol(uri: &str) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         use std::process::Command;
+        // CREATE_NO_WINDOW : pas de fenêtre cmd qui clignote
         Command::new("cmd")
             .args(["/C", "start", "", uri])
+            .creation_flags(0x0800_0000)
             .spawn()
             .map_err(|e| AppError::Launch(e.to_string()))?;
         return Ok(());
@@ -197,10 +200,12 @@ pub async fn launch_follow(cookie: &str, user_id: u64) -> Result<()> {
 pub fn kill_all() -> Result<()> {
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         use std::process::Command;
         for proc in ["RobloxPlayerBeta.exe", "RobloxPlayerLauncher.exe"] {
             let _ = Command::new("taskkill")
                 .args(["/F", "/IM", proc])
+                .creation_flags(0x0800_0000)
                 .output();
         }
         return Ok(());

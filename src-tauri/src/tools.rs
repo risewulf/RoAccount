@@ -50,8 +50,10 @@ pub fn open_url(url: &str) -> Result<()> {
     }
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         std::process::Command::new("rundll32")
             .args(["url.dll,FileProtocolHandler", url])
+            .creation_flags(0x0800_0000)
             .spawn()
             .map_err(|e| AppError::Other(e.to_string()))?;
         return Ok(());
