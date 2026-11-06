@@ -2,10 +2,10 @@
 
 # RoAccount
 
-**Gestionnaire de comptes Roblox local pour Windows.**
-Coffre chiffré, multi-clients, serveurs privés, macros — le tout en local.
+**Local Roblox account manager for Windows.**
+Encrypted vault, multi-client launching, private servers, macros — all on your machine.
 
-[Site](https://roaccount.xyz) · [Discord](https://discord.gg/u6wWWSUz3G) · [Télécharger](https://github.com/risewulf/RoAccount/releases/latest)
+[Website](https://roaccount.xyz) · [Discord](https://discord.gg/u6wWWSUz3G) · [Download](https://github.com/risewulf/RoAccount/releases/latest)
 
 Tauri 2 · Rust · React
 
@@ -13,105 +13,107 @@ Tauri 2 · Rust · React
 
 ---
 
-## Télécharger
+## Download
 
-1. Va sur la page **[Releases](https://github.com/risewulf/RoAccount/releases/latest)**.
-2. Télécharge **`RoAccount_x.y.z_x64-setup.exe`** et lance-le.
-3. Si Windows affiche *« Windows a protégé votre PC »* (SmartScreen) : clique sur **Informations complémentaires → Exécuter quand même**. L'appli n'est pas encore signée numériquement, le code source est entièrement ici pour vérification.
+1. Go to the **[Releases](https://github.com/risewulf/RoAccount/releases/latest)** page.
+2. Download **`RoAccount_x.y.z_x64-setup.exe`** and run it.
+3. If Windows shows *"Windows protected your PC"* (SmartScreen), click **More info → Run anyway**. The app is not code-signed yet; the full source code is right here so you can check it.
 
-> **Important :** ferme tous les clients Roblox **avant** de lancer RoAccount. Le multi-clients ne marche que si RoAccount démarre en premier.
+> **Important:** close every Roblox client **before** starting RoAccount. Multi-client only works if RoAccount starts first.
 
-## Fonctionnalités
+## Features
 
 | | |
 |---|---|
-| 🔐 **Coffre chiffré** | Cookies chiffrés en local (Argon2id + AES-256-GCM), protégés par un mot de passe maître. Rien n'est écrit en clair. |
-| 👥 **Comptes en direct** | Ajout par cookie, validation auprès de Roblox, puis Robux / Premium / amis / présence / état du cookie. |
-| 🚀 **Multi-clients** | Plusieurs clients Roblox en même temps, lancement en lot avec délai réglable, bouton « Tout arrêter ». |
-| 🌐 **Serveurs différents** | Dans un lot, chaque compte dans son propre serveur : le même, aléatoire, le plus proche (ping), ou ton serveur privé. |
-| 🔑 **Serveurs privés** | Lister, acheter, renommer, régénérer le lien et activer/désactiver tes serveurs privés depuis l'appli. |
-| ⭐ **Compte MAIN** | Marque le compte sur lequel tu joues : il est exclu des actions de groupe et de l'auto-rejoin. |
-| 🧩 **Macros AutoHotkey v2** | Lance tes scripts AHK sur tes clients (le PID du client est passé en `A_Args[1]`). |
-| 🪟 **Monitor** | Dispositions de fenêtres **Fit** / **Tiny**, muet par client, priorité de processus, fermeture. |
-| 🔔 **Alertes Discord** | Webhook + @mention de ton ID quand un client plante, se déconnecte ou se fige. Auto-rejoin. |
-| 💻 **Pour ce PC** | Mesure ton CPU/RAM et propose le bon nombre de clients, délai et disposition. |
-| 🤝 **Rendre amis** | Tes comptes s'envoient et s'acceptent des demandes d'ami automatiquement. |
-| 📦 **Import / export** | Import depuis Roblox Account Manager (JSON ou texte), export de cookies. |
-| 📰 **Actualités** | Les nouveautés du projet directement dans l'appli. |
+| 🔐 **Encrypted vault** | Cookies are encrypted locally (Argon2id + AES-256-GCM) behind a master password. Nothing is ever stored in plain text. |
+| 👥 **Live accounts** | Add an account with its cookie, it is validated against Roblox, then Robux / Premium / friends / presence / cookie status are shown. |
+| 🚀 **Multi-client** | Run several Roblox clients at once, batch launch with an adjustable delay, "Kill all" button. |
+| 🌐 **Different servers** | In a batch, every account in its own server: the same one, random, closest (lowest ping), or your own private server. |
+| 🔑 **Private servers** | List, buy, rename, regenerate the link and enable/disable your private servers from the app. |
+| ⭐ **MAIN account** | Mark the account you play on: it is left out of bulk actions and auto-rejoin. |
+| 🧩 **AutoHotkey v2 macros** | Run your AHK scripts on your clients (the client PID is passed as `A_Args[1]`). |
+| 🪟 **Monitor** | **Fit** / **Tiny** window layouts, per-client mute, process priority, close. |
+| 🔔 **Discord alerts** | Webhook + @mention of your ID when a client crashes, disconnects or freezes. Auto-rejoin. |
+| 💻 **For this PC** | Measures your CPU/RAM and suggests the right number of clients, delay and layout. |
+| 🤝 **Make friends** | Your accounts send and accept friend requests between each other automatically. |
+| 📦 **Import / export** | Import from Roblox Account Manager (JSON or text), export cookies. |
+| 📰 **News** | Project news, right inside the app. |
 
-## Comment fonctionne le multi-clients
+> The app interface is currently in French.
 
-Roblox n'autorise qu'un client à la fois via un verrou Windows (un *mutex* nommé `ROBLOX_singletonEvent`). Au démarrage, RoAccount crée ce verrou avant Roblox et le garde ouvert : les clients voient qu'il existe et démarrent quand même côte à côte.
-Pour chaque compte, l'appli demande à Roblox un **ticket de connexion** à usage unique (avec le cookie du compte), puis ouvre le lien `roblox-player:` correspondant : Windows lance le client déjà connecté.
+## How multi-client works
 
-Compte environ 1 à 1,5 Go de RAM par client.
+Roblox only allows one client at a time through a Windows lock (a *mutex* named `ROBLOX_singletonEvent`). At startup, RoAccount creates that lock before Roblox does and keeps it open: clients see that it already exists and start anyway, side by side.
+For each account, the app asks Roblox for a one-time **login ticket** (using the account's cookie), then opens the matching `roblox-player:` link: Windows starts the client already logged in.
 
-## Sécurité & usage
+Count roughly 1 to 1.5 GB of RAM per client.
 
-- À utiliser **uniquement avec des comptes qui t'appartiennent**.
-- Les cookies restent **sur ta machine**, chiffrés dans le coffre. RoAccount ne parle qu'aux API officielles `*.roblox.com` (et à ton webhook Discord si tu en configures un).
-- Ne partage jamais ton cookie `.ROBLOSECURITY` ni ton fichier de coffre.
-- Les exports de cookies sont en clair : stocke-les avec soin.
-- Projet indépendant, sans lien avec Roblox Corporation. Utilisation à tes risques : les règles de Roblox s'appliquent à tes comptes.
+## Security & usage
 
-## Récupérer un cookie
+- Use it **only with accounts you own**.
+- Cookies **stay on your machine**, encrypted in the vault. RoAccount only talks to the official `*.roblox.com` APIs (and to your Discord webhook if you set one).
+- Never share your `.ROBLOSECURITY` cookie or your vault file.
+- Cookie exports are plain text: store them carefully.
+- Independent project, not affiliated with Roblox Corporation. Use at your own risk: Roblox's rules apply to your accounts.
 
-Dans ton navigateur connecté à Roblox : outils développeur → Application → Cookies → `roblox.com` → copie la valeur de `.ROBLOSECURITY`, puis colle-la dans **Ajouter un compte**.
+## Getting a cookie
 
-## Développement
+In your browser, logged in to Roblox: developer tools → Application → Cookies → `roblox.com` → copy the value of `.ROBLOSECURITY`, then paste it in **Add account**.
 
-**Pré-requis :** Node.js 20+, Rust stable, Visual Studio Build Tools (workload « Développement Desktop en C++ »), WebView2.
+## Development
+
+**Requirements:** Node.js 20+, stable Rust, Visual Studio Build Tools ("Desktop development with C++" workload), WebView2.
 
 ```bash
 npm install
 
-# UI seule dans le navigateur, avec un backend simulé (mock)
+# UI only, in the browser, with a mocked backend
 npm run dev
 
-# appli complète (front + backend Rust)
+# full app (front end + Rust backend)
 npm run tauri dev
 
-# build de l'installeur (src-tauri/target/release/bundle/nsis/)
+# build the installer (src-tauri/target/release/bundle/nsis/)
 npm run tauri build
 ```
 
-En navigateur (`npm run dev`), l'appli tourne sur des **données d'exemple** : aucun vrai compte, aucun lancement.
+In the browser (`npm run dev`) the app runs on **sample data**: no real account, no launching.
 
-### Publier une version
+### Publishing a release
 
-Le workflow [`release.yml`](.github/workflows/release.yml) construit l'installeur sur GitHub Actions et le publie dans les Releases :
+The [`release.yml`](.github/workflows/release.yml) workflow builds the installer on GitHub Actions and publishes it to Releases:
 
 ```bash
-# 1. monte la version dans package.json, src-tauri/Cargo.toml et src-tauri/tauri.conf.json
-# 2. puis :
+# 1. bump the version in package.json, src-tauri/Cargo.toml and src-tauri/tauri.conf.json
+# 2. then:
 git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Un lancement manuel (onglet *Actions → Build & Release → Run workflow*) produit un build de test, récupérable en artefact.
+A manual run (*Actions → Build & Release → Run workflow*) produces a test build, available as an artifact.
 
-## Structure
+## Project layout
 
 ```
 roaccount/
-├─ src/                      # front React (vues, composants, pont typé api.ts + mock)
-│  ├─ styles/theme.css       # jetons de marque (change le rouge ici)
+├─ src/                      # React front end (views, components, typed bridge api.ts + mock)
+│  ├─ styles/theme.css       # brand tokens (change the red here)
 │  ├─ lib/ api.ts · types.ts
 │  ├─ components/            # TopBar, Sidebar, AccountRow, AccountDetail…
-│  └─ views/                 # Comptes, Lancement, Monitor, Macros, Serveurs privés, Outils, Actualités…
-└─ src-tauri/                # backend Rust
+│  └─ views/                 # Accounts, Launch, Monitor, Macros, Private servers, Tools, News…
+└─ src-tauri/                # Rust backend
    └─ src/
-      ├─ vault.rs            # coffre chiffré
-      ├─ roblox.rs           # client API Roblox (comptes, serveurs, amis, serveurs privés)
-      ├─ launch.rs           # lancement par ticket d'authentification
-      ├─ singleton.rs        # multi-instance (mutex Roblox)
-      ├─ winmgmt.rs          # fenêtres, priorité, muet (WASAPI), détection de gel
-      ├─ macros.rs           # macros AutoHotkey v2
-      ├─ tools.rs            # Pour ce PC, import/export, actualités
-      ├─ background.rs       # auto-rejoin + alertes
-      └─ commands.rs         # commandes exposées à l'UI
+      ├─ vault.rs            # encrypted vault
+      ├─ roblox.rs           # Roblox API client (accounts, servers, friends, private servers)
+      ├─ launch.rs           # launching through the authentication ticket
+      ├─ singleton.rs        # multi-instance (Roblox mutex)
+      ├─ winmgmt.rs          # windows, priority, mute (WASAPI), freeze detection
+      ├─ macros.rs           # AutoHotkey v2 macros
+      ├─ tools.rs            # For this PC, import/export, news
+      ├─ background.rs       # auto-rejoin + alerts
+      └─ commands.rs         # commands exposed to the UI
 ```
 
-## Licence
+## License
 
 [MIT](LICENSE) © Risewulf
