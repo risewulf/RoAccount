@@ -679,6 +679,23 @@ pub async fn kill_all(state: State<'_, AppState>) -> Result<()> {
     Ok(())
 }
 
+/// État du multi-compte : le verrou est-il tenu, et des clients Roblox tournent-ils hors de RoAccount ?
+#[derive(serde::Serialize)]
+pub struct MultiStatus {
+    pub enabled: bool,
+    /// 0 non demandé · 1 pris · 2 existait déjà · 3 échec
+    pub state: u8,
+    /// Clients Roblox en cours qui ne viennent pas de RoAccount.
+    pub foreign: usize,
+}
+
+#[tauri::command]
+pub fn multi_status(state: State<'_, AppState>) -> MultiStatus {
+    let known: std::collections::HashSet<u32> = state.pids.lock().unwrap().values().cloned().collect();
+    let foreign = proc::roblox_processes().into_iter().filter(|p| !known.contains(&p.pid)).count();
+    MultiStatus { enabled: state.settings.lock().unwrap().multi_instance, state: crate::singleton::state(), foreign }
+}
+
 /// Arrête seulement les clients de certains comptes (fermeture douce, puis de force après le délai réglé).
 /// Renvoie le nombre de clients arrêtés.
 #[tauri::command]

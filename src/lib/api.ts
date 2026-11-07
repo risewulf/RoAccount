@@ -124,6 +124,7 @@ export const api = {
   scheduleShutdown: (minutes: number) => invoke<void>("schedule_shutdown", { minutes }),
 
   cancelBatch: () => invoke<void>("cancel_batch"),
+  multiStatus: () => invoke<{ enabled: boolean; state: number; foreign: number }>("multi_status"),
   stopAccounts: (ids: string[]) => invoke<number>("stop_accounts", { ids }),
 
   /** Écoute la progression d'un lot (ticket → run → join). Renvoie la fonction pour se désabonner. */
@@ -381,6 +382,8 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return 12 as T;
     case "clean_roblox_cache":
       return (args?.dryRun ? 842_000_000 : 842_000_000) as T;
+    case "multi_status":
+      return { enabled: true, state: (window as unknown as { __multi?: number }).__multi ?? 1, foreign: (window as unknown as { __multi?: number }).__multi === 2 ? 2 : 0 } as T;
     case "stop_accounts":
       return ((args?.ids as string[]) ?? []).length as T;
     case "set_autostart":

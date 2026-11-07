@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TitleBar } from "./components/Shell";
+import { MultiBanner, TitleBar } from "./components/Shell";
 import { AccountSide } from "./components/AccountSide";
 import { AddAccountDialog } from "./components/AddAccountDialog";
 import { AccueilView } from "./views/AccueilView";
@@ -169,6 +169,7 @@ function Shell({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => voi
   return (
     <div className="win">
       <TitleBar onLock={onLock} onKillAll={onKillAll} />
+      <MultiBanner onKillAll={onKillAll} />
       <div className="body">
         {settings.tabLayout === "side" && <AccountSide />}
         <main className="main" key={store.view}><Pages /></main>

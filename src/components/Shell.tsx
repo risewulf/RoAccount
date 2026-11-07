@@ -263,6 +263,32 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
   );
 }
 
+/** Avertit quand le multi-compte ne peut pas marcher : un Roblox tournait déjà quand RoAccount a démarré. */
+export function MultiBanner({ onKillAll }: { onKillAll: () => void }) {
+  const [st, setSt] = useState<{ enabled: boolean; state: number; foreign: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const poll = () => { void api.multiStatus().then((s) => { if (alive) setSt(s); }).catch(() => {}); };
+    poll();
+    const t = window.setInterval(poll, 5000);
+    return () => { alive = false; window.clearInterval(t); };
+  }, []);
+  if (!st) return null;
+  if (!st.enabled) {
+    return <div className="multi-banner"><span>Le multi-compte est désactivé : un seul client Roblox peut tourner à la fois.</span></div>;
+  }
+  if (st.state === 3) return <div className="multi-banner"><span>Impossible de créer le verrou multi-compte. Relance RoAccount en administrateur.</span></div>;
+  if (st.state === 2 && st.foreign > 0) {
+    return (
+      <div className="multi-banner">
+        <span><b>Multi-compte bloqué.</b> Roblox était déjà ouvert quand RoAccount a démarré ({st.foreign} client{st.foreign > 1 ? "s" : ""} à lui). Ferme-{st.foreign > 1 ? "les" : "le"}, puis relance tes comptes : pas besoin de redémarrer RoAccount.</span>
+        <button className="btn sm" onClick={onKillAll}>Fermer ces clients</button>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function WindowControls() {
   return (
     <div className="win-ctl">

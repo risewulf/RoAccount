@@ -37,6 +37,15 @@ pub fn run() {
                 let s = st.settings.lock().unwrap();
                 launch::set_extra_args(s.extra.get("launchArgs").and_then(|v| v.as_str()).unwrap_or(""));
             }
+            {
+                let st = app.state::<AppState>();
+                match singleton::state() {
+                    1 => st.push_log("info", "Multi-compte : verrou pris, les clients peuvent tourner côte à côte".into()),
+                    2 => st.push_log("warn", "Multi-compte : un Roblox tournait déjà au démarrage de RoAccount. Ferme-le (Tout fermer) puis relance tes comptes".into()),
+                    3 => st.push_log("error", "Multi-compte : impossible de créer le verrou".into()),
+                    _ => {}
+                }
+            }
             // boucle d'arrière-plan : auto-rejoin + alertes
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -129,6 +138,7 @@ pub fn run() {
             commands::clean_roblox_logs,
             commands::clean_roblox_cache,
             commands::stop_accounts,
+            commands::multi_status,
             commands::set_autostart,
             commands::schedule_shutdown,
             commands::cancel_batch,
