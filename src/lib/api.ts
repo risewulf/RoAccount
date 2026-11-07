@@ -1,7 +1,7 @@
 import {
   DEFAULT_SETTINGS, type AccountMeta, type BackupInfo, type FriendReport, type ImportReport, type LogEntry,
   type MacroInfo, type Metrics, type NewsItem, type PcInfo, type PrivateServer, type ProcInfo, type RobloxVersion,
-  type BootProgress, type BootStatus, type RunningMacro, type ServerInfo, type Settings, type TrashItem, type VaultStatus,
+  type BootProgress, type BootStatus, type GameHit, type RunningMacro, type ServerInfo, type Settings, type TrashItem, type VaultStatus,
 } from "./types";
 import { seedDemoRobux } from "./robux";
 
@@ -48,6 +48,7 @@ export const api = {
   ) => invoke<AccountMeta>("update_account", { id, ...patch }),
   refreshAccount: (id: string) =>
     invoke<AccountMeta>("refresh_account", { id }),
+  searchGames: (query: string) => invoke<GameHit[]>("search_games", { query }),
   bootstrapStatus: () => invoke<BootStatus>("bootstrap_status"),
   bootstrapInstall: (version?: string) => invoke<string>("bootstrap_install", { version: version ?? null }),
   bootstrapRemove: (name: string) => invoke<void>("bootstrap_remove", { name }),
@@ -430,6 +431,18 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       const i = mockAccounts.findIndex((a) => a.id === args?.id);
       if (i >= 0) { const [a] = mockAccounts.splice(i, 1); mockTrash.push({ id: a.id, username: a.username, display_name: a.display_name, deleted_at: Date.now() / 1000 }); mockTrashed.push(a); }
       return undefined as T;
+    }
+    case "search_games": {
+      const q = String(args?.query ?? "").toLowerCase();
+      const all: GameHit[] = [
+        { name: "[⚡] Adopt Me!", place_id: 920587237, universe_id: 383310974, players: 142_300, likes: 86, icon: null },
+        { name: "Pet Simulator 99", place_id: 8737899170, universe_id: 3317771874, players: 61_800, likes: 91, icon: null },
+        { name: "Blox Fruits", place_id: 2753915549, universe_id: 994732206, players: 318_400, likes: 89, icon: null },
+        { name: "Brookhaven 🏡RP", place_id: 4924922222, universe_id: 1685831367, players: 402_100, likes: 82, icon: null },
+        { name: "Grow a Garden", place_id: 126884695634066, universe_id: 7436755782, players: 205_000, likes: 93, icon: null },
+        { name: "Murder Mystery 2", place_id: 142823291, universe_id: 66654135, players: 47_900, likes: 88, icon: null },
+      ];
+      return all.filter((g) => g.name.toLowerCase().includes(q)) as T;
     }
     case "bootstrap_status":
       return { enabled: DEFAULT_SETTINGS.ownRoblox, root: "%LOCALAPPDATA%\\RoAccount\\Roblox", mods: "%LOCALAPPDATA%\\RoAccount\\Roblox\\Mods", installed: mockBoot.map((v) => ({ ...v })), current: mockBoot[0]?.name ?? null, latest: "version-f0ea5da9412f4e35", latest_number: "0.746.0.7461267", busy: false } as T;

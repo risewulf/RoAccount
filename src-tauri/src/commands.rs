@@ -1659,3 +1659,9 @@ pub async fn bootstrap_install(app: AppHandle, state: State<'_, AppState>, versi
 pub fn bootstrap_remove(name: String) -> Result<()> {
     crate::bootstrap::remove(&name).map_err(AppError::Other)
 }
+
+/// Search public games by name (Launcher game picker).
+#[tauri::command]
+pub async fn search_games(query: String) -> Result<Vec<crate::models::GameHit>> {
+    roblox::search_games(&query).await
+}

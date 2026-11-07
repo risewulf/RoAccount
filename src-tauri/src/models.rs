@@ -209,3 +209,15 @@ pub struct TrashItem {
     pub display_name: String,
     pub deleted_at: u64,
 }
+
+/// A game found by the search box of the Launcher.
+#[derive(Debug, Clone, Serialize)]
+pub struct GameHit {
+    pub name: String,
+    pub place_id: u64,
+    pub universe_id: u64,
+    pub players: u64,
+    /// 0-100, None when nobody voted
+    pub likes: Option<u8>,
+    pub icon: Option<String>,
+}

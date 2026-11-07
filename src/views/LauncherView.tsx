@@ -5,9 +5,10 @@ import { Avatar } from "../components/Avatar";
 import { Toggle } from "../components/Controls";
 import { useMetrics } from "../lib/hooks";
 import { detect, isDead, launchable, newId, runProfile } from "../lib/launcher";
-import { logEvent } from "../lib/history";
 import { fmtMem } from "../lib/ui";
-import type { BootProgress, BootStatus, LaunchProfile, NewsItem, Settings } from "../lib/types";
+import type { BootProgress, BootStatus, GameHit, LaunchProfile, NewsItem, Settings } from "../lib/types";
+import { loadRecent, pushRecent, type RecentGame } from "../lib/recent";
+import { dayKey, fmtDuration, loadDays, logEvent } from "../lib/history";
 import { IconCheck, IconChevDown, IconGauge, IconGear, IconHome, IconPlay, IconRocket, IconServer, IconUser, IconX } from "../components/icons";
 import { FPS_UNLIMITED, fpsLabel, gfxAny, gfxKey, gfxOf } from "../lib/gfx";
 
@@ -28,7 +29,28 @@ export function LauncherView() {
   const [installing, setInstalling] = useState<BootProgress | null>(null);
   const [stages, setStages] = useState<Record<string, Stage>>({});
   const { metrics } = useMetrics(2500, tab === "home");
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<GameHit[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [recent, setRecent] = useState<RecentGame[]>(loadRecent);
+  const [confirmKill, setConfirmKill] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
+
+  // game search: results appear a moment after you stop typing
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) { setHits(null); setSearching(false); return; }
+    setSearching(true);
+    const t = window.setTimeout(() => {
+      api.searchGames(term).then((r) => setHits(r)).catch(() => setHits([])).finally(() => setSearching(false));
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [q]);
+  function pickGame(g: { name: string; placeId: number; icon: string | null }) {
+    store.updateSettings({ target: `https://www.roblox.com/games/${g.placeId}` });
+    setRecent(pushRecent(g));
+    setPop(null); setQ(""); setHits(null);
+  }
 
   const refreshBoot = () => api.bootstrapStatus().then(setBoot).catch(() => {});
   useEffect(() => {
@@ -68,7 +90,9 @@ export function LauncherView() {
   const usable = picked.filter((a) => launchable(a));
   const main = accounts.find((a) => a.main) ?? accounts.find((a) => a.favorite) ?? accounts[0];
   const det = detect(s.target);
-  const gameName = (usable[0] ?? picked[0] ?? accounts.find((a) => a.game))?.game ?? (det.kind === "game" ? det.label : det.kind === "none" ? "Choose a game" : det.label);
+  const pidNow = Number(s.target.match(/games\/(\d+)/)?.[1] ?? s.target.match(/^(\d+)$/)?.[1] ?? 0);
+  const knownName = recent.find((r) => r.placeId === pidNow)?.name;
+  const gameName = knownName ?? (det.kind === "none" ? "Choose a game" : det.label);
 
   const live = accounts.filter((a) => a.running || a.presence === "InGame");
   const byId = new Map((metrics?.clients ?? []).filter((c) => c.account_id).map((c) => [c.account_id!, c]));
@@ -103,6 +127,8 @@ export function LauncherView() {
       const r = await runProfile(p, accounts);
       r.launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: s.target }); });
       store.toast(`${r.launched.length} client${r.launched.length !== 1 ? "s" : ""} launched.`);
+      const pid = Number(s.target.match(/games\/(\d+)/)?.[1] ?? s.target.match(/^(\d+)$/)?.[1] ?? 0);
+      if (pid && r.launched.length) setRecent(pushRecent({ name: recent.find((x) => x.placeId === pid)?.name ?? gameName, placeId: pid, icon: recent.find((x) => x.placeId === pid)?.icon ?? null }));
       window.setTimeout(() => { void store.refreshAll(); }, 8000);
     } catch (e) { store.toast(String(e)); } finally { setBusy(false); }
   }
@@ -171,7 +197,7 @@ export function LauncherView() {
                 </button>
                 <button className="lc-pill" onClick={() => setPop(pop === "game" ? null : "game")} aria-label="Game">
                   <span className="lc-ico"><IconServer /></span>
-                  <span><small>Game · {s.serverMode === "same" ? "same server" : s.serverMode}</small><b>{det.kind === "none" ? "Choose" : det.kind === "game" ? "Place " + (s.target.match(/(\d{4,})/)?.[1] ?? "") : det.label}</b></span>
+                  <span><small>Game · {s.serverMode === "same" ? "same server" : s.serverMode}</small><b>{det.kind === "none" ? "Choose" : knownName ?? (det.kind === "game" ? "Place " + (s.target.match(/(\d{4,})/)?.[1] ?? "") : det.label)}</b></span>
                 </button>
 
                 {pop === "ver" && (
@@ -207,8 +233,20 @@ export function LauncherView() {
 
                 {pop === "game" && (
                   <div className="lc-pop lc-pop-game">
-                    <div className="lc-pop-h">Where?</div>
-                    <input className="txt" autoFocus value={s.target} placeholder="Game link, private server, place ID or @username" onChange={(e) => store.updateSettings({ target: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setPop(null); }} />
+                    <div className="lc-pop-h">Find a game</div>
+                    <input className="txt" autoFocus value={q} placeholder="Search by name… (Adopt Me, Blox Fruits)" onChange={(e) => setQ(e.target.value)} aria-label="Search games" />
+                    <div className="lc-list" style={{ marginTop: 8, maxHeight: 250 }}>
+                      {searching && <div className="lc-det">Searching…</div>}
+                      {hits && hits.length === 0 && !searching && <div className="lc-det">No game found.</div>}
+                      {(hits ?? (q.trim().length < 2 ? recent.map((r) => ({ name: r.name, place_id: r.placeId, universe_id: 0, players: -1, likes: null, icon: r.icon })) : [])).map((g) => (
+                        <button key={g.place_id} className="lc-acc" onClick={() => pickGame({ name: g.name, placeId: g.place_id, icon: g.icon })}>
+                          {g.icon ? <img className="lc-gi" src={g.icon} alt="" /> : <span className="lc-gi ph"><IconServer /></span>}
+                          <span><b>{g.name}</b><small>{g.players >= 0 ? `${g.players.toLocaleString("en-US")} playing${g.likes != null ? ` · ${g.likes}% liked` : ""}` : "Recent"}</small></span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="lc-pop-h" style={{ marginTop: 8 }}>Or paste a link, place ID or @username</div>
+                    <input className="txt" value={s.target} placeholder="roblox.com/games/… or @username" onChange={(e) => store.updateSettings({ target: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") setPop(null); }} />
                     <div className="seg" style={{ margin: "10px 0" }}>
                       {(["same", "random", "closest"] as const).map((m) => <button key={m} className={s.serverMode === m ? "on" : ""} onClick={() => store.updateSettings({ serverMode: m })}>{m === "same" ? "Same" : m === "random" ? "Random" : "Closest"}</button>)}
                     </div>
@@ -250,6 +288,19 @@ export function LauncherView() {
                     </button>
                   ))}
                 </div>
+                {recent.length > 0 && (
+                  <>
+                    <h2 className="lc-h">Recent games</h2>
+                    <div className="lc-quick" style={{ marginBottom: 22 }}>
+                      {recent.slice(0, 6).map((r) => (
+                        <button key={r.placeId} className="lc-card tile lc-recent" onClick={() => pickGame(r)}>
+                          {r.icon ? <img className="lc-gi" src={r.icon} alt="" /> : <span className="lc-gi ph"><IconServer /></span>}
+                          <b>{r.name}</b><span>Use for the next launch</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {profiles.length > 0 && (
                   <>
                     <h2 className="lc-h">Quick launch</h2>
@@ -264,6 +315,20 @@ export function LauncherView() {
                 )}
               </section>
               <aside>
+                <h2 className="lc-h">Today</h2>
+                <div className="lc-stats">
+                  <div><b>{live.length}</b><span>in game</span></div>
+                  <div><b>{fmtDuration(Object.values(loadDays().find((d) => d.day === dayKey())?.secs ?? {}).reduce((x, y) => x + y, 0))}</b><span>play time</span></div>
+                  <div><b>{accounts.reduce((x, a) => x + (a.robux ?? 0), 0).toLocaleString("en-US")}</b><span>Robux in total</span></div>
+                  <div><b>{accounts.length}</b><span>accounts</span></div>
+                </div>
+                <h2 className="lc-h">Quick actions</h2>
+                <div className="lc-actions">
+                  <button className="btn" onClick={() => void api.arrangeWindows(s.windowLayout).catch((e) => store.toast(String(e)))}>Tile windows</button>
+                  <button className="btn" onClick={() => void api.windowAction(null, "minimize").catch((e) => store.toast(String(e)))}>Minimize all</button>
+                  <button className="btn" onClick={() => void api.cleanRobloxCache(false).then((n) => store.toast(`${(n / 1048576).toFixed(0)} MB freed.`)).catch((e) => store.toast(String(e)))}>Clean cache</button>
+                  <button className={"btn" + (confirmKill ? " danger" : "")} onClick={() => { if (!confirmKill) { setConfirmKill(true); window.setTimeout(() => setConfirmKill(false), 3000); return; } setConfirmKill(false); void api.killAll().then(() => store.toast("All clients closed.")).catch((e) => store.toast(String(e))); }}>{confirmKill ? "Sure? Close all" : "Close all"}</button>
+                </div>
                 <h2 className="lc-h">Running now</h2>
                 <div className="lc-live">
                   {live.length === 0 && <div className="placeholder">Nothing is running.</div>}

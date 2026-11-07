@@ -662,3 +662,69 @@ mod tests {
         assert_eq!(param_after(u, "nope="), None);
     }
 }
+
+
+/// Searches public games by keyword (what the Roblox website's search box uses) and attaches their icons.
+pub async fn search_games(query: &str) -> Result<Vec<crate::models::GameHit>> {
+    let q = query.trim();
+    if q.len() < 2 || q.len() > 60 {
+        return Ok(Vec::new());
+    }
+    let http = client()?;
+    let v: serde_json::Value = http
+        .get("https://apis.roblox.com/search-api/omni-search")
+        .query(&[("searchQuery", q), ("sessionId", &uuid::Uuid::new_v4().to_string()), ("pageType", "all")])
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let mut hits: Vec<crate::models::GameHit> = Vec::new();
+    for group in v.get("searchResults").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+        if group.get("contentGroupType").and_then(|x| x.as_str()) != Some("Game") {
+            continue;
+        }
+        for c in group.get("contents").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+            let (Some(name), Some(place), Some(uni)) = (
+                c.get("name").and_then(|x| x.as_str()),
+                c.get("rootPlaceId").and_then(|x| x.as_u64()),
+                c.get("universeId").and_then(|x| x.as_u64()),
+            ) else { continue };
+            let up = c.get("totalUpVotes").and_then(|x| x.as_u64()).unwrap_or(0);
+            let down = c.get("totalDownVotes").and_then(|x| x.as_u64()).unwrap_or(0);
+            hits.push(crate::models::GameHit {
+                name: name.chars().take(80).collect(),
+                place_id: place,
+                universe_id: uni,
+                players: c.get("playerCount").and_then(|x| x.as_u64()).unwrap_or(0),
+                likes: if up + down > 0 { Some((up * 100 / (up + down)) as u8) } else { None },
+                icon: None,
+            });
+            if hits.len() >= 12 {
+                break;
+            }
+        }
+        if hits.len() >= 12 {
+            break;
+        }
+    }
+    if !hits.is_empty() {
+        let ids: Vec<String> = hits.iter().map(|h| h.universe_id.to_string()).collect();
+        if let Ok(resp) = http
+            .get("https://thumbnails.roblox.com/v1/games/icons")
+            .query(&[("universeIds", ids.join(",")), ("size", "150x150".to_string()), ("format", "Png".to_string())])
+            .send()
+            .await
+        {
+            if let Ok(t) = resp.json::<serde_json::Value>().await {
+                for item in t.get("data").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+                    let (Some(id), Some(url)) = (item.get("targetId").and_then(|x| x.as_u64()), item.get("imageUrl").and_then(|x| x.as_str())) else { continue };
+                    if let Some(h) = hits.iter_mut().find(|h| h.universe_id == id) {
+                        h.icon = Some(url.to_string());
+                    }
+                }
+            }
+        }
+    }
+    Ok(hits)
+}

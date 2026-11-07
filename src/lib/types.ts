@@ -370,3 +370,6 @@ export interface BootStatus {
   busy: boolean;
 }
 export interface BootProgress { stage: "download" | "extract" | "finish"; done: number; total: number; item: string; }
+
+/** A game found by the Launcher search. */
+export interface GameHit { name: string; place_id: number; universe_id: number; players: number; likes: number | null; icon: string | null; }

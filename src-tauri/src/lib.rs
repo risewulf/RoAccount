@@ -154,6 +154,7 @@ pub fn run() {
             commands::bootstrap_status,
             commands::bootstrap_install,
             commands::bootstrap_remove,
+            commands::search_games,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting RoAccount")

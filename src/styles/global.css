@@ -774,3 +774,14 @@ tr.acc-row[draggable="true"] { cursor: grab; }
 .lc-mod .seg, .lc-mod .btn { margin-top: 10px; align-self: flex-start; }
 @media (max-width: 1100px) { .lc-cols { grid-template-columns: 1fr; } }
 @media (max-width: 860px) { .lc { grid-template-columns: 1fr; } .lc-rail { position: static; flex-direction: row; overflow-x: auto; } .lc-rail button { flex: 1; min-width: 70px; } .lc-pop-acc, .lc-pop-game { left: 0; } }
+
+.lc-gi { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; flex: none; background: var(--surface-2); }
+.lc-gi.ph { display: grid; place-items: center; color: var(--muted); }
+.lc-gi.ph svg { width: 17px; height: 17px; }
+.lc-recent { align-items: flex-start; }
+.lc-recent .lc-gi { width: 46px; height: 46px; border-radius: 12px; margin-bottom: 4px; }
+.lc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.lc-stats div { padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border-soft); }
+.lc-stats b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+.lc-stats span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.lc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
