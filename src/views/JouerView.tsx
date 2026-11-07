@@ -31,12 +31,13 @@ function detect(t: string): { kind: "game" | "private" | "user" | "none"; label:
 }
 
 function statusOf(a: AccountMeta, excludeMain: boolean): { text: string; warn: boolean; disabled: boolean } {
-  if (a.main && excludeMain) return { text: "Exclu des lots (MAIN)", warn: false, disabled: true };
+  // Un compte MAIN reste lançable quand on le choisit à la main : l'exclusion ne vaut que pour « tout sélectionner ».
+  const note = a.main && excludeMain ? " · hors sélection auto" : "";
   if (a.health === "cookie_expired") return { text: "À vérifier", warn: true, disabled: true };
   if (a.presence === "InGame" || a.running) return { text: "Déjà en jeu", warn: false, disabled: true };
-  if (a.presence === "Online" || a.presence === "Studio") return { text: "En ligne", warn: false, disabled: false };
-  if (a.presence === "Offline") return { text: "Hors ligne", warn: false, disabled: false };
-  return { text: "Non vérifié", warn: false, disabled: false };
+  if (a.presence === "Online" || a.presence === "Studio") return { text: "En ligne" + note, warn: false, disabled: false };
+  if (a.presence === "Offline") return { text: "Hors ligne" + note, warn: false, disabled: false };
+  return { text: "Non vérifié" + note, warn: false, disabled: false };
 }
 
 export function JouerView() {
@@ -86,7 +87,7 @@ export function JouerView() {
   });
 
   const picked = accounts.filter((a) => selected.has(a.id));
-  const usable = picked.filter((a) => !statusOf(a, settings.excludeMainFromAll).disabled || (a.presence === "InGame" && false));
+  const usable = picked.filter((a) => !statusOf(a, settings.excludeMainFromAll).disabled);
 
   function saveFav() {
     const name = settings.target.split("/").filter(Boolean).pop() || settings.target;

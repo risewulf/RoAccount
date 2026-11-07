@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "description": "Local Roblox account manager for Windows - encrypted vault, multi-client launching.",
+  "description": "Gestionnaire de comptes Roblox local pour Windows — coffre chiffré, lancement multi-comptes.",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

@@ -217,10 +217,12 @@ impl Vault {
         self.accounts.iter().any(|a| a.id == id && a.main)
     }
 
-    /// (id, cookie, roblox_id, username) des comptes donnés, hors MAIN et dans l'ordre demandé.
+    /// (id, cookie, roblox_id, username) des comptes demandés, dans l'ordre demandé.
+    /// MAIN n'est pas filtré ici : l'interface ne l'exclut que de « tout sélectionner »,
+    /// un compte MAIN choisi à la main doit se lancer.
     pub fn bulk_targets(&self, ids: &[String]) -> Vec<(String, String, u64, String)> {
         ids.iter()
-            .filter_map(|id| self.accounts.iter().find(|a| &a.id == id && !a.main))
+            .filter_map(|id| self.accounts.iter().find(|a| &a.id == id))
             .map(|a| (a.id.clone(), a.cookie.clone(), a.roblox_id, a.username.clone()))
             .collect()
     }

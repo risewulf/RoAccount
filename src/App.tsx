@@ -166,7 +166,7 @@ function Shell({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => voi
       <TitleBar onLock={onLock} onKillAll={onKillAll} />
       <div className="body">
         {settings.tabLayout === "side" && <AccountSide />}
-        <main className="main"><Pages /></main>
+        <main className="main" key={store.view}><Pages /></main>
       </div>
       <Runtime onLock={onLock} onKillAll={onKillAll} />
       {store.addOpen && (

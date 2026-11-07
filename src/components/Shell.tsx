@@ -92,6 +92,7 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
   const store = useStore();
   const { view, setView, accounts, settings } = store;
   const [open, setOpen] = useState<"tools" | "settings" | null>(null);
+  const [shown, setShown] = useState<"tools" | "settings">("tools"); // contenu gardé pendant l'animation de fermeture
   const [menu, setMenu] = useState(false);
   const [tray, setTray] = useState(false);
   const menuRef = useOutside(menu, () => setMenu(false));
@@ -102,10 +103,19 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
   const inTools = TOOLS_NAV.some((n) => n.id === view);
   const inSettings = SETTINGS_NAV.some((n) => n.id === view);
 
-  // le groupe se replie quand on revient sur une page principale
+  // la sous-barre se ferme au clic ailleurs ou sur Échap
   useEffect(() => {
-    if (MAIN_NAV.some((n) => n.id === view)) setOpen(null);
-  }, [view]);
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && t.closest(".subbar-wrap, .nav-grp")) return;
+      setOpen(null);
+    };
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
+    document.addEventListener("mousedown", h);
+    document.addEventListener("keydown", k);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
+  }, [open]);
 
   const dark = document.documentElement.getAttribute("data-theme") !== "light";
   const mainItem = (n: NavDef) => (
@@ -114,31 +124,30 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
     </button>
   );
 
+  /** Un bouton à plusieurs pages : il ouvre une seconde barre, qui se referme dès qu'on choisit une page. */
   function group(g: "tools" | "settings", list: NavDef[], icon: ReactNode, label: string, active: boolean) {
-    if (open === g) {
-      return (
-        <>
-          <button className="nav-i" onClick={() => setOpen(null)} title="Replier" aria-label="Replier"><IconX /></button>
-          {list.map(mainItem)}
-        </>
-      );
-    }
     const cur = list.find((n) => n.id === view);
-    if (active && cur) {
-      return (
-        <button className="nav-i on" onClick={() => setOpen(g)} title={label} aria-label={label}>
-          {g === "settings" ? icon : cur.icon}<span>{cur.label}</span><Dots />
-        </button>
-      );
-    }
+    const isOpen = open === g;
     return (
-      <button className="nav-i" onClick={() => setOpen(g)} title={label} aria-label={label}>
-        {icon}<Dots />
+      <button
+        className={"nav-i nav-grp" + (active ? " on" : "") + (isOpen ? " open" : "")}
+        onClick={() => { tick(settings.sounds); if (isOpen) setOpen(null); else { setShown(g); setOpen(g); } }}
+        title={label}
+        aria-label={label}
+        aria-expanded={isOpen}
+      >
+        {active && cur && g !== "settings" ? cur.icon : icon}
+        {active && cur && <span>{cur.label}</span>}
+        <Dots />
       </button>
     );
   }
 
+  const subList = shown === "tools" ? TOOLS_NAV : SETTINGS_NAV;
+  const pickSub = (id: ViewId) => { go(id); setOpen(null); };
+
   return (
+    <>
     <header className="titlebar" data-tauri-drag-region>
       <div className="tb-left" data-tauri-drag-region>
         <div className="pop-wrap" ref={menuRef}>
@@ -217,6 +226,24 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
         <WindowControls />
       </div>
     </header>
+    <div className={"subbar-wrap" + (open ? " open" : "")} aria-hidden={!open}>
+      <div className="subbar-in">
+        <nav className="nav subnav" key={shown} aria-label={shown === "tools" ? "Outils" : "Paramètres"}>
+          {subList.map((n, i) => (
+            <button
+              key={n.id}
+              style={{ ["--i" as string]: i }}
+              className={"nav-i sub" + (view === n.id ? " on" : "")}
+              tabIndex={open ? 0 : -1}
+              onClick={() => pickSub(n.id)}
+            >
+              {n.icon}<span>{n.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+    </div>
+    </>
   );
 }
 
