@@ -11,7 +11,7 @@ pub struct MacroProc {
     pub pid: u32,
     pub child: std::process::Child,
 }
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Suivi d'un compte pour l'auto-rejoin.
 #[derive(Default)]
@@ -46,6 +46,9 @@ pub struct AppState {
     pub last_summary: Mutex<Option<Instant>>,
     /// Demande d'annulation du lot en cours.
     pub cancel_batch: AtomicBool,
+    /// Dernier lancement de chaque compte : un client qui vient de démarrer a un délai de grâce
+    /// (fenêtre « ne répond pas » pendant le chargement, présence Roblox pas encore à jour).
+    pub launched_at: Mutex<HashMap<String, Instant>>,
 }
 
 impl AppState {
@@ -63,7 +66,27 @@ impl AppState {
             last_trim: Mutex::new(None),
             last_summary: Mutex::new(None),
             cancel_batch: AtomicBool::new(false),
+            launched_at: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Marque un compte comme lancé à l'instant : démarre son délai de grâce et remet ses compteurs à zéro.
+    pub fn mark_running(&self, id: String) {
+        self.launched_at.lock().unwrap().insert(id.clone(), Instant::now());
+        if let Some(e) = self.rejoin.lock().unwrap().get_mut(&id) {
+            e.offline_strikes = 0;
+        }
+        self.running.lock().unwrap().insert(id);
+    }
+
+    /// Vrai si ce compte a été lancé il y a moins de `secs` secondes.
+    pub fn recently_launched(&self, id: &str, secs: u64) -> bool {
+        self.launched_at
+            .lock()
+            .unwrap()
+            .get(id)
+            .map(|t| t.elapsed() < Duration::from_secs(secs))
+            .unwrap_or(false)
     }
 
     /// Ajoute une entrée au journal (borné à 200 lignes).

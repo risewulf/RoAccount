@@ -96,6 +96,7 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
   const [shown, setShown] = useState<"tools" | "settings">("tools"); // contenu gardé pendant l'animation de fermeture
   const [menu, setMenu] = useState(false);
   const [tray, setTray] = useState(false);
+  const [confirmKill, setConfirmKill] = useState(false);
   const menuRef = useOutside(menu, () => setMenu(false));
   const trayRef = useOutside(tray, () => setTray(false));
 
@@ -209,6 +210,20 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
       </nav>
 
       <div className="tb-right" data-tauri-drag-region>
+        <button
+          className={"close-all" + (confirmKill ? " confirm" : "") + (running.length ? " live" : "")}
+          title="Fermer tous les clients Roblox"
+          aria-label="Tout fermer"
+          onClick={() => {
+            if (!confirmKill) { setConfirmKill(true); window.setTimeout(() => setConfirmKill(false), 3000); return; }
+            setConfirmKill(false);
+            onKillAll();
+          }}
+        >
+          <IconX />
+          <span>{confirmKill ? "Confirmer ?" : "Tout fermer"}</span>
+          {!confirmKill && running.length > 0 && <b>{running.length}</b>}
+        </button>
         <button className="tb-ghost" title="Actualiser (F5)" aria-label="Actualiser" onClick={() => { void store.refreshAll(); store.toast("Comptes actualisés."); }}><IconRefresh /></button>
         <button
           className={"tb-ghost"}

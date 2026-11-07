@@ -190,7 +190,7 @@ pub async fn send_to_server(
         v.cookie_for(&id)?
     };
     launch::launch_to_job(&cookie, place_id, &job_id).await?;
-    state.running.lock().unwrap().insert(id);
+    state.mark_running(id);
     Ok(())
 }
 
@@ -406,7 +406,7 @@ pub async fn launch_account(
     };
     let before = current_pids();
     launch::launch(&cookie, &target).await?;
-    state.running.lock().unwrap().insert(id.clone());
+    state.mark_running(id.clone());
     state.rejoin.lock().unwrap().remove(&id);
     state.push_log("launch", format!("{username} lancé"));
 
@@ -547,7 +547,7 @@ async fn run_batch(
         match launch_one(cookie, target, place_id, &dests[i]).await {
             Ok(()) => {
                 emit(id, "run", None);
-                state.running.lock().unwrap().insert(id.clone());
+                state.mark_running(id.clone());
                 state.rejoin.lock().unwrap().remove(id); // repart à zéro pour l'auto-rejoin
                 launched.push(id.clone());
                 // associe le nouveau client à ce compte (Monitor par compte)
@@ -653,7 +653,7 @@ pub async fn follow_user(
     let mut launched = Vec::new();
     for (id, cookie, _rid, _name) in targets {
         if launch::launch_follow(&cookie, user_id).await.is_ok() {
-            state.running.lock().unwrap().insert(id.clone());
+            state.mark_running(id.clone());
             state.rejoin.lock().unwrap().remove(&id);
             launched.push(id);
             tokio::time::sleep(Duration::from_millis(wait)).await;

@@ -48,7 +48,7 @@ async fn relaunch(app: &AppHandle, id: &str, settings: &Settings) -> bool {
     if launch::launch(&cookie, &settings.target).await.is_err() {
         return false;
     }
-    state.running.lock().unwrap().insert(id.to_string());
+    state.mark_running(id.to_string());
     crate::commands::track_pid(&state, id, &before, 25).await;
     true
 }
@@ -76,6 +76,13 @@ async fn check_freeze(app: &AppHandle, settings: &Settings) {
     })
     .await
     .unwrap_or_default();
+
+    // pas de verdict « figé » pendant le chargement d'un client qui vient de démarrer
+    let loading: HashSet<u32> = {
+        let m = state.pids.lock().unwrap();
+        m.iter().filter(|(id, _)| state.recently_launched(id, 150)).map(|(_, p)| *p).collect()
+    };
+    let hung: Vec<u32> = hung.into_iter().filter(|p| !loading.contains(p)).collect();
 
     let mut to_alert: Vec<u32> = Vec::new();
     {
@@ -274,6 +281,11 @@ async fn tick(app: &AppHandle) {
     let window = Duration::from_secs(settings.give_up_minutes.max(1) as u64 * 60);
 
     for id in ids {
+        // délai de grâce : un client qui vient d'être lancé charge encore, Roblox ne le voit pas « en jeu »
+        // tout de suite — le relancer maintenant ferait expulser le client qui démarre.
+        if state.recently_launched(&id, 120) {
+            continue;
+        }
         let meta = {
             let v = state.vault.lock().unwrap();
             // le compte MAIN n'est jamais relancé automatiquement
