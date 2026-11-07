@@ -60,7 +60,7 @@ async fn authentication_ticket(cookie: &str) -> Result<String> {
 
     if !resp.status().is_success() {
         return Err(AppError::Launch(format!(
-            "demande de ticket refusée (HTTP {})",
+            "ticket request refused (HTTP {})",
             resp.status()
         )));
     }
@@ -69,7 +69,7 @@ async fn authentication_ticket(cookie: &str) -> Result<String> {
         .get("rbx-authentication-ticket")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| AppError::Launch("ticket d'authentification absent de la réponse".into()))
+        .ok_or_else(|| AppError::Launch("authentication ticket missing from the response".into()))
 }
 
 /// Mots ajoutés après chaque lien de lancement (Réglages → Lancement → Arguments).
@@ -184,7 +184,7 @@ fn open_protocol(uri: &str) -> Result<()> {
         // Le client Roblox officiel ne tourne pas sur Linux : en dev on log seulement.
         let _ = uri;
         Err(AppError::Launch(
-            "le client Roblox n'est pas disponible sur cette plateforme (cible : Windows)".into(),
+            "the Roblox client isn't available on this platform (target: Windows)".into(),
         ))
     }
 }
@@ -255,7 +255,7 @@ pub fn kill_all(delay_secs: u64) -> Result<()> {
     {
         let _ = delay_secs;
         Err(AppError::Launch(
-            "arrêt des clients disponible uniquement sur Windows".into(),
+            "stopping clients is only available on Windows".into(),
         ))
     }
 }

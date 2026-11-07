@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-/// Entrée stockée *dans* le coffre (contient le cookie en clair une fois déchiffré).
+/// Entrée stockée *dans* le coffre (contient le cookie in clear text une fois déchiffré).
 /// N'est jamais renvoyée telle quelle à l'UI — voir `AccountMeta`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoredAccount {
@@ -164,7 +164,7 @@ pub struct NewsItem {
     pub url: Option<String>,
 }
 
-/// Bilan de « Rendre amis ».
+/// Bilan de « Make friends ».
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct FriendReport {
     pub pairs: u32,

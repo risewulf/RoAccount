@@ -21,8 +21,8 @@ export function installDebugLog() {
     c[fn] = (...a: unknown[]) => { add(lvl, a); orig(...a); };
   }
   window.addEventListener("error", (e) => add("error", [e.message]));
-  window.addEventListener("unhandledrejection", (e) => add("error", ["promesse rejetée :", String(e.reason)]));
-  add("info", ["RoAccount — interface démarrée"]);
+  window.addEventListener("unhandledrejection", (e) => add("error", ["promise rejected:", String(e.reason)]));
+  add("info", ["RoAccount — interface started"]);
 }
 
 export function getDebugLines(): DebugLine[] { return buf; }

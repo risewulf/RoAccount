@@ -32,7 +32,7 @@ export function RevealCookieModal({ account, onClose }: { account: AccountMeta; 
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      setErr("Copie refusée — sélectionne le texte manuellement.");
+      setErr("Copy blocked — select the text manually.");
     }
   }
 
@@ -43,16 +43,16 @@ export function RevealCookieModal({ account, onClose }: { account: AccountMeta; 
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3>Cookie de {account.username}</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="Fermer"><IconX /></button>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><IconX /></button>
         </div>
 
         {!revealed ? (
           <>
-            <p>Le cookie <code>.ROBLOSECURITY</code> donne un accès complet au compte. Ne le partage jamais. Révéler&nbsp;?</p>
+            <p>The cookie <code>.ROBLOSECURITY</code> gives full access to the account. Never share it. Reveal it?</p>
             {err && <div className="lock-err" style={{ marginBottom: 10 }}>{err}</div>}
             <div className="dialog-actions">
-              <button className="btn" onClick={onClose}>Annuler</button>
-              <button className="btn primary" onClick={reveal} disabled={busy}>{busy ? "…" : "Révéler"}</button>
+              <button className="btn" onClick={onClose}>Cancel</button>
+              <button className="btn primary" onClick={reveal} disabled={busy}>{busy ? "…" : "Reveal"}</button>
             </div>
           </>
         ) : (
@@ -60,9 +60,9 @@ export function RevealCookieModal({ account, onClose }: { account: AccountMeta; 
             <textarea readOnly value={show ? (cookie ?? "") : masked} spellCheck={false} onFocus={(e) => e.currentTarget.select()} />
             {err && <div className="lock-err" style={{ marginBottom: 10 }}>{err}</div>}
             <div className="dialog-actions">
-              <button className="btn" onClick={() => setShow((v) => !v)}>{show ? "Masquer" : "Afficher"}</button>
-              <button className="btn" onClick={copy}>{copied ? "Copié ✓" : "Copier"}</button>
-              <button className="btn primary" onClick={onClose}>Fermer</button>
+              <button className="btn" onClick={() => setShow((v) => !v)}>{show ? "Hide" : "Show"}</button>
+              <button className="btn" onClick={copy}>{copied ? "Copied ✓" : "Copy"}</button>
+              <button className="btn primary" onClick={onClose}>Close</button>
             </div>
           </>
         )}

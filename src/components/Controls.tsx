@@ -61,7 +61,7 @@ export function Row({
         <b>
           {title}{badge}
           {explain && (
-            <button className={"chev-btn" + (open ? " open" : "")} onClick={() => setOpen((o) => !o)} aria-label="Plus d'infos" aria-expanded={open}>
+            <button className={"chev-btn" + (open ? " open" : "")} onClick={() => setOpen((o) => !o)} aria-label="More info" aria-expanded={open}>
               <IconChevDown />
             </button>
           )}
@@ -91,7 +91,7 @@ export function SettingsPage({ title, children }: { title: string; children: Rea
         <h1>{title}</h1>
         <label className="field">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3-3" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un paramètre…" aria-label="Rechercher un paramètre" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a setting…" aria-label="Search a setting" />
         </label>
       </div>
       <SearchCtx.Provider value={q}>{children}</SearchCtx.Provider>

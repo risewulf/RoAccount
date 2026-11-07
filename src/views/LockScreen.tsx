@@ -14,7 +14,7 @@ export function LockScreen({
   const [forgot, setForgot] = useState(false);
 
   async function submit() {
-    if (!password) { setErr("Entre ton mot de passe."); return; }
+    if (!password) { setErr("Enter your password."); return; }
     setBusy(true); setErr("");
     try {
       if (exists) await api.unlockVault(password);
@@ -30,29 +30,29 @@ export function LockScreen({
           <span className="brand-btn"><BrandMark size={24} /><span>Ro<b>Account</b></span></span>
         </div>
         <div className="tb-right" data-tauri-drag-region>
-          <button className="tb-ghost" onClick={onTheme} aria-label="Thème" title="Thème clair / sombre">{theme === "dark" ? <IconSun /> : <IconMoon />}</button>
+          <button className="tb-ghost" onClick={onTheme} aria-label="Theme" title="Light / dark theme">{theme === "dark" ? <IconSun /> : <IconMoon />}</button>
           <WindowControls />
         </div>
       </header>
       <div className="lock-body">
         <div className="lock-card">
           <IconLock className="lk" />
-          <h1>{exists ? "Coffre verrouillé" : "Crée ton coffre"}</h1>
+          <h1>{exists ? "Vault locked" : "Create your vault"}</h1>
           <p>
             {exists
-              ? `Verrouillé. Saisis ton mot de passe maître pour accéder à ${count > 0 ? `tes ${count} comptes` : "tes comptes"}.`
-              : "Choisis un mot de passe maître : il chiffre tous tes cookies sur ce PC."}
+              ? `Locked. Enter your master password to access ${count > 0 ? `your ${count} accounts` : "your accounts"}.`
+              : "Choose a master password: it encrypts all your cookies on this PC."}
           </p>
-          <label htmlFor="pw">Mot de passe maître</label>
+          <label htmlFor="pw">Master password</label>
           <div className="field">
-            <input id="pw" type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void submit()} autoFocus aria-label="Mot de passe maître" />
-            <button onClick={() => setShow((s) => !s)} aria-label="Afficher le mot de passe" style={{ display: "grid", placeItems: "center" }}><IconEye /></button>
+            <input id="pw" type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void submit()} autoFocus aria-label="Master password" />
+            <button onClick={() => setShow((s) => !s)} aria-label="Show password" style={{ display: "grid", placeItems: "center" }}><IconEye /></button>
           </div>
           <div className="lock-err">{err}</div>
-          <button className="btn solid" onClick={() => void submit()} disabled={busy}>{busy ? "…" : exists ? "Déverrouiller" : "Créer le coffre"}</button>
-          {exists && <button className="forgot link-btn" style={{ textDecoration: "none", color: "var(--fg)" }} onClick={() => setForgot((f) => !f)}>Mot de passe oublié ?</button>}
-          {forgot && <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>Il n'existe pas de récupération : les cookies sont chiffrés avec ce mot de passe. Tu peux repartir de zéro en supprimant le dossier <code>%LOCALAPPDATA%\RoAccount</code>, puis en réajoutant tes comptes.</p>}
-          <div className="fine">Rien ne quitte ce PC.</div>
+          <button className="btn solid" onClick={() => void submit()} disabled={busy}>{busy ? "…" : exists ? "Unlock" : "Create the vault"}</button>
+          {exists && <button className="forgot link-btn" style={{ textDecoration: "none", color: "var(--fg)" }} onClick={() => setForgot((f) => !f)}>Forgot your password?</button>}
+          {forgot && <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>There is no recovery: cookies are encrypted with this password. You can start over by deleting the folder <code>%LOCALAPPDATA%\RoAccount</code>, then adding your accounts again.</p>}
+          <div className="fine">Nothing leaves this PC.</div>
         </div>
       </div>
     </div>

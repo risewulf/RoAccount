@@ -17,7 +17,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 #[derive(Default)]
 pub struct RejoinInfo {
     pub offline_strikes: u32,
-    /// Instants des relances récentes (fenêtre glissante pour « abandonner après N essais en M min »).
+    /// Instants des relances récentes (fenêtre glissante pour « abandonner après N tries in M min »).
     pub attempt_times: Vec<Instant>,
     pub last_attempt: Option<Instant>,
 }
@@ -47,7 +47,7 @@ pub struct AppState {
     /// Demande d'annulation du lot en cours.
     pub cancel_batch: AtomicBool,
     /// Dernier lancement de chaque compte : un client qui vient de démarrer a un délai de grâce
-    /// (fenêtre « ne répond pas » pendant le chargement, présence Roblox pas encore à jour).
+    /// (fenêtre « ne répond pas » pendant le chargement, présence Roblox pas encore up to date).
     pub launched_at: Mutex<HashMap<String, Instant>>,
 }
 

@@ -15,9 +15,9 @@ fn show_main(app: &AppHandle) {
 }
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Afficher RoAccount", true, None::<&str>)?;
-    let killall = MenuItem::with_id(app, "killall", "Tout arrêter", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "Show RoAccount", true, None::<&str>)?;
+    let killall = MenuItem::with_id(app, "killall", "Stop all", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &killall, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id("main-tray")

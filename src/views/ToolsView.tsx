@@ -33,17 +33,17 @@ export function ToolsView() {
       if (reco.maxClients > 2) {
         for (const p of await api.monitorProcesses()) { try { await api.setPriority(p.pid, "below"); n++; } catch { /* ignore */ } }
       }
-      store.toast(`Réglages appliqués${n ? ` · priorité basse sur ${n} client(s)` : ""}.`);
+      store.toast(`Settings applied${n ? ` · low priority on ${n} client(s)` : ""}.`);
     } catch (e) { store.toast(String(e)); } finally { setApplying(false); }
   }
 
-  // ---- Rendre amis
+  // ---- Make friends
   const bulk = accounts.filter((a) => selected.has(a.id) && !a.main && a.health !== "cookie_expired");
   const [friendBusy, setFriendBusy] = useState(false);
   const [friendRep, setFriendRep] = useState<FriendReport | null>(null);
   async function makeFriends() {
     const pairs = (bulk.length * (bulk.length - 1)) / 2;
-    if (!window.confirm(`Envoyer et accepter ${pairs} demande(s) d'ami entre ${bulk.length} comptes ? Compte environ ${Math.ceil(pairs * 3.5 / 60)} min.`)) return;
+    if (!window.confirm(`Send and accept ${pairs} friend request(s) between ${bulk.length} accounts? Takes about ${Math.ceil(pairs * 3.5 / 60)} min.`)) return;
     setFriendBusy(true); setFriendRep(null);
     try { setFriendRep(await api.friendAccounts(bulk.map((a) => a.id))); }
     catch (e) { store.toast(String(e)); } finally { setFriendBusy(false); }
@@ -70,82 +70,82 @@ export function ToolsView() {
     catch (e) { store.toast(String(e)); }
   }
 
-  const fmtGo = (mb: number) => (mb / 1024).toFixed(1) + " Go";
+  const fmtGo = (mb: number) => (mb / 1024).toFixed(1) + " GB";
   const runningCount = accounts.filter((a) => a.running).length;
 
   return (
     <section>
-      <div className="vhead"><div><h1>Outils</h1><p>Optimisation du PC, amis entre comptes, import et export.</p></div></div>
+      <div className="vhead"><div><h1>Tools</h1><p>PC optimisation, friends between accounts, import and export.</p></div></div>
 
       <div className="card">
-        <h3>Pour ce PC</h3>
-        <p className="sub">RoAccount mesure ta machine et propose les réglages adaptés au nombre de clients que tu peux faire tourner.</p>
-        {!pc ? <div className="placeholder">Mesure en cours…</div> : reco && (
+        <h3>For this PC</h3>
+        <p className="sub">RoAccount measures your machine and suggests settings suited to how many clients you can run.</p>
+        {!pc ? <div className="placeholder">Measuring…</div> : reco && (
           <>
             <div className="reco">
-              <div className="tot"><div className="k">Processeur</div><div className="v" style={{ fontSize: 13 }}>{pc.cpu_name || "—"}</div></div>
+              <div className="tot"><div className="k">CPU</div><div className="v" style={{ fontSize: 13 }}>{pc.cpu_name || "—"}</div></div>
               <div className="tot"><div className="k">Threads</div><div className="v">{pc.cpu_threads}</div></div>
-              <div className="tot"><div className="k">RAM libre / totale</div><div className="v" style={{ fontSize: 15 }}>{fmtGo(pc.ram_free_mb)} / {fmtGo(pc.ram_total_mb)}</div></div>
-              <div className="tot"><div className="k">Clients conseillés</div><div className="v" style={{ color: "var(--ok)" }}>{reco.maxClients}</div></div>
+              <div className="tot"><div className="k">Free / total RAM</div><div className="v" style={{ fontSize: 15 }}>{fmtGo(pc.ram_free_mb)} / {fmtGo(pc.ram_total_mb)}</div></div>
+              <div className="tot"><div className="k">Recommended clients</div><div className="v" style={{ color: "var(--ok)" }}>{reco.maxClients}</div></div>
             </div>
             <ul className="tips">
-              <li>Jusqu'à <b>{reco.maxClients}</b> clients en même temps (limite mémoire : {reco.ramBased}, limite processeur : {reco.cpuBased}).{runningCount > reco.maxClients ? " Tu en as plus en cours : surveille les ralentissements." : ""}</li>
-              <li>Délai entre lancements conseillé : <b>{reco.cooldownMs / 1000} s</b> (actuel : {(settings.cooldownMs / 1000).toFixed(0)} s).</li>
-              <li>Disposition conseillée : <b>{reco.layout === "tiny" ? "Tiny (vignettes)" : "Fit (plein écran)"}</b>.</li>
-              {reco.mute && <li>Couper le son au lancement des lots pour éviter le bruit de {reco.maxClients} clients.</li>}
-              {reco.maxClients > 2 && <li>Priorité CPU « basse » sur les clients en arrière-plan.</li>}
-              <li>Dans Roblox : Échap → Paramètres → qualité graphique manuelle au minimum, et limite les FPS des clients secondaires.</li>
+              <li>Up to <b>{reco.maxClients}</b> clients at the same time (memory limit: {reco.ramBased}, CPU limit: {reco.cpuBased}).{runningCount > reco.maxClients ? " You have more running: watch for slowdowns." : ""}</li>
+              <li>Recommended launch delay: <b>{reco.cooldownMs / 1000} s</b> (current: {(settings.cooldownMs / 1000).toFixed(0)} s).</li>
+              <li>Recommended layout: <b>{reco.layout === "tiny" ? "Tiny (thumbnails)" : "Fit (full screen)"}</b>.</li>
+              {reco.mute && <li>Mute on batch launch to avoid the noise of {reco.maxClients} clients.</li>}
+              {reco.maxClients > 2 && <li>“Low” CPU priority on background clients.</li>}
+              <li>In Roblox: Esc → Settings → manual graphics quality at minimum, and limit the FPS of secondary clients.</li>
             </ul>
-            <button className="btn primary" onClick={applyReco} disabled={applying}>{applying ? "…" : "Appliquer ces réglages"}</button>
+            <button className="btn primary" onClick={applyReco} disabled={applying}>{applying ? "…" : "Apply these settings"}</button>
           </>
         )}
       </div>
 
       <div className="card">
-        <h3>Rendre amis</h3>
-        <p className="sub">Envoie une demande d'ami entre chaque paire de comptes sélectionnés et l'accepte automatiquement. Le compte MAIN est exclu. 12 comptes maximum par passe.</p>
+        <h3>Make friends</h3>
+        <p className="sub">Sends a friend request between each pair of selected accounts and accepts it automatically. The MAIN account is excluded. 12 accounts maximum per pass.</p>
         <button className="btn primary" onClick={makeFriends} disabled={friendBusy || bulk.length < 2}>
-          {friendBusy ? "En cours… (ne ferme pas l'app)" : `Rendre amis (${bulk.length} comptes)`}
+          {friendBusy ? "Working… (don't close the app)" : `Make friends (${bulk.length} accounts)`}
         </button>
-        {bulk.length < 2 && <p className="hint" style={{ marginTop: 8 }}>Coche au moins 2 comptes dans l'onglet Comptes.</p>}
+        {bulk.length < 2 && <p className="hint" style={{ marginTop: 8 }}>Tick at least 2 accounts in the Accounts tab.</p>}
         {friendRep && (
           <div className="report">
-            <b>{friendRep.sent}</b> demande(s) envoyée(s), <b>{friendRep.accepted}</b> acceptée(s), <b>{friendRep.already}</b> déjà amis sur {friendRep.pairs} paire(s).
+            <b>{friendRep.sent}</b> request(s) sent, <b>{friendRep.accepted}</b> accepted, <b>{friendRep.already}</b> already friends out of {friendRep.pairs} pair(s).
             {friendRep.failed.length > 0 && <ul>{friendRep.failed.slice(0, 8).map((f, i) => <li key={i}>{f}</li>)}</ul>}
           </div>
         )}
       </div>
 
       <div className="card">
-        <h3>Importer des comptes</h3>
-        <p className="sub">Colle un export JSON de Roblox Account Manager (ou de RoAccount), des cookies .ROBLOSECURITY (un par ligne, « user:pass:cookie » accepté), ou le chemin d'un fichier.</p>
-        <textarea className="code" style={{ minHeight: 110 }} value={text} onChange={(e) => setText(e.target.value)} placeholder="Colle ici les cookies, l'export JSON ou un chemin de fichier…" spellCheck={false} />
+        <h3>Import accounts</h3>
+        <p className="sub">Paste a Roblox Account Manager (or RoAccount) JSON export, .ROBLOSECURITY cookies (one per line, “user:pass:cookie” accepted), or a file path.</p>
+        <textarea className="code" style={{ minHeight: 110 }} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste cookies, the JSON export or a file path here…" spellCheck={false} />
         <div className="inline" style={{ marginTop: 10 }}>
           <label className="field" style={{ flex: 1, minWidth: 160 }}>
-            <input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="Groupe (par défaut : Importé)" />
+            <input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="Group (default: Imported)" />
           </label>
-          <button className="btn primary" onClick={doImport} disabled={impBusy || !text.trim()}>{impBusy ? "Import…" : "Importer"}</button>
+          <button className="btn primary" onClick={doImport} disabled={impBusy || !text.trim()}>{impBusy ? "Import…" : "Import"}</button>
         </div>
         {impRep && (
           <div className="report">
-            <b>{impRep.added}</b> compte(s) ajouté(s) sur <b>{impRep.found}</b> trouvé(s).
+            <b>{impRep.added}</b> account(s) added out of <b>{impRep.found}</b> found.
             {impRep.failed.length > 0 && <ul>{impRep.failed.slice(0, 8).map((f, i) => <li key={i}>{f}</li>)}</ul>}
           </div>
         )}
       </div>
 
       <div className="card">
-        <h3>Exporter les cookies</h3>
-        <p className="sub">Écrit les cookies <b>en clair</b> dans un fichier (pour migrer vers un autre outil). Quiconque lit ce fichier prend le contrôle des comptes : supprime-le après usage. {selected.size ? `${selected.size} compte(s) sélectionné(s).` : "Aucune sélection : tous les comptes seront exportés."}</p>
+        <h3>Export cookies</h3>
+        <p className="sub">Writes the cookies <b>in clear text</b> to a file (to migrate to another tool). Anyone who reads this file takes control of the accounts: delete it after use. {selected.size ? `${selected.size} account(s) selected.` : "No selection: every account will be exported."}</p>
         <label className="inline" style={{ marginBottom: 12, fontSize: 13 }}>
           <input type="checkbox" checked={warned} onChange={(e) => setWarned(e.target.checked)} />
-          Je comprends que le fichier n'est pas chiffré.
+          I understand the file is not encrypted.
         </label>
         <div className="inline">
-          <button className="btn" disabled={!warned} onClick={() => doExport("json")}>Exporter en JSON</button>
-          <button className="btn" disabled={!warned} onClick={() => doExport("cookies")}>Exporter en liste de cookies</button>
+          <button className="btn" disabled={!warned} onClick={() => doExport("json")}>Export as JSON</button>
+          <button className="btn" disabled={!warned} onClick={() => doExport("cookies")}>Export as a cookie list</button>
         </div>
-        {exportPath && <div className="report">Fichier créé : <b style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{exportPath}</b></div>}
+        {exportPath && <div className="report">File created: <b style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{exportPath}</b></div>}
       </div>
     </section>
   );

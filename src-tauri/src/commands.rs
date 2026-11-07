@@ -78,7 +78,7 @@ pub async fn add_account(
         username: profile.name,
         display_name: profile.display_name,
         cookie,
-        group: group.unwrap_or_else(|| "Sans groupe".into()),
+        group: group.unwrap_or_else(|| "No group".into()),
         alias: String::new(),
         note: String::new(),
         favorite: false,
@@ -95,7 +95,7 @@ pub fn remove_account(state: State<'_, AppState>, id: String) -> Result<()> {
     v.remove(&id)
 }
 
-/// Connexion Roblox intégrée : ouvre une fenêtre de login Roblox, attend que
+/// Roblox login intégrée : ouvre une fenêtre de login Roblox, attend que
 /// l'utilisateur se connecte, récupère le cookie `.ROBLOSECURITY` directement
 /// depuis le magasin de cookies de cette fenêtre (sans copier-coller), le valide
 /// puis ajoute le compte au coffre.
@@ -112,10 +112,10 @@ pub async fn login_roblox(
 
     let url: tauri::Url = "https://www.roblox.com/login"
         .parse()
-        .map_err(|_| AppError::Other("URL de connexion invalide".into()))?;
+        .map_err(|_| AppError::Other("Invalid sign-in URL".into()))?;
 
     let win = WebviewWindowBuilder::new(&app, "roblox-login", WebviewUrl::External(url))
-        .title("Connexion Roblox — RoAccount")
+        .title("Roblox login — RoAccount")
         .inner_size(520.0, 740.0)
         .center()
         .build()
@@ -123,14 +123,14 @@ pub async fn login_roblox(
 
     let probe: tauri::Url = "https://www.roblox.com"
         .parse()
-        .map_err(|_| AppError::Other("URL invalide".into()))?;
+        .map_err(|_| AppError::Other("Invalid URL".into()))?;
 
     // sonde le cookie jusqu'à 4 minutes, ou jusqu'à ce que l'utilisateur ferme la fenêtre
     let deadline = Instant::now() + Duration::from_secs(240);
     let mut found: Option<String> = None;
     while Instant::now() < deadline {
         if app.get_webview_window("roblox-login").is_none() {
-            return Err(AppError::Other("Fenêtre de connexion fermée.".into()));
+            return Err(AppError::Other("Sign-in window closed.".into()));
         }
         if let Ok(cookies) = win.cookies_for_url(probe.clone()) {
             for c in cookies {
@@ -148,7 +148,7 @@ pub async fn login_roblox(
 
     let _ = win.close();
     let cookie = found.ok_or_else(|| {
-        AppError::Other("Connexion non détectée (délai dépassé).".into())
+        AppError::Other("Sign-in not detected (timed out).".into())
     })?;
 
     let profile = roblox::validate(&cookie).await?;
@@ -158,7 +158,7 @@ pub async fn login_roblox(
         username: profile.name,
         display_name: profile.display_name,
         cookie,
-        group: group.unwrap_or_else(|| "Sans groupe".into()),
+        group: group.unwrap_or_else(|| "No group".into()),
         alias: String::new(),
         note: String::new(),
         favorite: false,
@@ -207,12 +207,12 @@ pub async fn test_discord(webhook: String) -> Result<()> {
     if !(w.starts_with("https://discord.com/api/webhooks/")
         || w.starts_with("https://discordapp.com/api/webhooks/"))
     {
-        return Err(AppError::Other("URL de webhook Discord invalide.".into()));
+        return Err(AppError::Other("Invalid Discord webhook URL.".into()));
     }
     let resp = reqwest::Client::new()
         .post(w)
         .json(&serde_json::json!({
-            "content": "✅ RoAccount — test d'alerte. Les notifications fonctionnent."
+            "content": "✅ RoAccount — alert test. Notifications are working."
         }))
         .send()
         .await?;
@@ -328,11 +328,11 @@ pub fn change_password(state: State<'_, AppState>, old: String, new: String) -> 
 pub fn export_backup(state: State<'_, AppState>) -> Result<String> {
     let src = { state.vault.lock().unwrap().file_path() };
     if !src.exists() {
-        return Err(AppError::Other("Aucun coffre à sauvegarder.".into()));
+        return Err(AppError::Other("No vault to back up.".into()));
     }
     let parent = src
         .parent()
-        .ok_or_else(|| AppError::Io("dossier invalide".into()))?;
+        .ok_or_else(|| AppError::Io("invalid folder".into()))?;
     let dir = parent.join("backups");
     std::fs::create_dir_all(&dir)?;
     let ts = std::time::SystemTime::now()
@@ -408,7 +408,7 @@ pub async fn launch_account(
     launch::launch(&cookie, &target).await?;
     state.mark_running(id.clone());
     state.rejoin.lock().unwrap().remove(&id);
-    state.push_log("launch", format!("{username} lancé"));
+    state.push_log("launch", format!("{username} launched"));
 
     // repère le PID du nouveau client en arrière-plan (Monitor par compte)
     let track_id = id.clone();
@@ -512,7 +512,7 @@ async fn run_batch(
                 .filter(|s| s.playing < s.max_players)
                 .collect();
             if servers.is_empty() {
-                return Err(AppError::Other("Aucun serveur public disponible pour ce jeu.".into()));
+                return Err(AppError::Other("No public server available for this game.".into()));
             }
             if mode == "random" {
                 servers.shuffle(&mut rand::thread_rng());
@@ -554,7 +554,7 @@ async fn run_batch(
                 track_pid(state, id, &before, 25).await;
                 emit(id, "join", None);
                 if settings.alert_launch {
-                    crate::discord::notify(&settings, &format!("🚀 **{username}** est entré en jeu."), false).await;
+                    crate::discord::notify(&settings, &format!("🚀 **{username}** got in game."), false).await;
                 }
                 let spent = started.elapsed();
                 let wait = Duration::from_millis(wait_ms);
@@ -564,7 +564,7 @@ async fn run_batch(
             }
             Err(e) => {
                 emit(id, "failed", Some(&e.to_string()));
-                errors.push(format!("{username} : {e}"));
+                errors.push(format!("{username}: {e}"));
             }
         }
     }
@@ -576,18 +576,18 @@ async fn run_batch(
         return Ok(launched);
     }
     let label = match mode {
-        "random" => " (serveurs aléatoires)",
-        "closest" => " (serveurs les plus proches)",
-        "private" => " (serveur privé)",
+        "random" => " (random servers)",
+        "closest" => " (closest servers)",
+        "private" => " (private server)",
         _ => "",
     };
-    state.push_log("launch", format!("Lot lancé — {} compte(s){label}", launched.len()));
+    state.push_log("launch", format!("Batch launched — {} account(s){label}", launched.len()));
 
     // alerte « lot terminé »
     if settings.alert_batch {
         crate::discord::notify(
             &settings,
-            &format!("✅ Lot lancé — {} compte(s) entrés{label}.", launched.len()),
+            &format!("✅ Batch launched — {} account(s) got in{label}.", launched.len()),
             false,
         )
         .await;
@@ -641,7 +641,7 @@ pub async fn follow_user(
 ) -> Result<Vec<String>> {
     let user_id = roblox::resolve_user(&target)
         .await
-        .ok_or_else(|| AppError::Other("Utilisateur introuvable.".into()))?;
+        .ok_or_else(|| AppError::Other("User not found.".into()))?;
 
     let targets = { state.vault.lock().unwrap().bulk_targets(&ids) };
     let wait = cooldown_ms.unwrap_or(6000);
@@ -660,7 +660,7 @@ pub async fn follow_user(
         }
     }
     if !launched.is_empty() {
-        state.push_log("follow", format!("{} compte(s) rejoignent {}", launched.len(), target));
+        state.push_log("follow", format!("{} account(s) joining {}", launched.len(), target));
     }
     Ok(launched)
 }
@@ -675,7 +675,7 @@ pub async fn kill_all(state: State<'_, AppState>) -> Result<()> {
     state.running.lock().unwrap().clear();
     state.rejoin.lock().unwrap().clear();
     state.pids.lock().unwrap().clear();
-    state.push_log("stop", "Tous les clients arrêtés".into());
+    state.push_log("stop", "All clients stopped".into());
     Ok(())
 }
 
@@ -743,7 +743,7 @@ pub async fn stop_accounts(state: State<'_, AppState>, ids: Vec<String>) -> Resu
             p.remove(id);
         }
     }
-    state.push_log("stop", format!("{n} client(s) arrêté(s)"));
+    state.push_log("stop", format!("{n} client(s) stopped"));
     Ok(n)
 }
 
@@ -766,7 +766,7 @@ pub fn set_priority(pid: u32, level: String) -> Result<()> {
     if crate::winmgmt::set_priority(pid, &level) {
         Ok(())
     } else {
-        Err(AppError::Other("Impossible de changer la priorité.".into()))
+        Err(AppError::Other("Couldn't change the priority.".into()))
     }
 }
 
@@ -812,7 +812,7 @@ pub fn export_csv(state: State<'_, AppState>) -> Result<String> {
     }
 
     let mut dir = dirs::data_local_dir()
-        .ok_or_else(|| AppError::Io("dossier de données local introuvable".into()))?;
+        .ok_or_else(|| AppError::Io("local data folder not found".into()))?;
     dir.push("RoAccount");
     dir.push("exports");
     std::fs::create_dir_all(&dir)?;
@@ -864,7 +864,7 @@ pub fn open_url(url: String) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
-// Rendre amis
+// Make friends
 // ---------------------------------------------------------------------------
 
 /// Rend amis tous les comptes sélectionnés entre eux (demande + acceptation automatique).
@@ -876,10 +876,10 @@ pub async fn friend_accounts(state: State<'_, AppState>, ids: Vec<String>) -> Re
     let targets = { state.vault.lock().unwrap().bulk_targets(&ids) };
     let n = targets.len();
     if n < 2 {
-        return Err(AppError::Other("Sélectionne au moins 2 comptes (le compte MAIN est exclu).".into()));
+        return Err(AppError::Other("Select at least 2 accounts (the MAIN account is excluded).".into()));
     }
     if n > 12 {
-        return Err(AppError::Other("12 comptes maximum par passe (limites de Roblox).".into()));
+        return Err(AppError::Other("12 accounts maximum per pass (Roblox limits).".into()));
     }
 
     let mut rep = FriendReport::default();
@@ -894,13 +894,13 @@ pub async fn friend_accounts(state: State<'_, AppState>, ids: Vec<String>) -> Re
                     tokio::time::sleep(Duration::from_millis(900)).await;
                     match roblox::accept_friend_request(&b.1, a.2).await {
                         Ok(true) => rep.accepted += 1,
-                        Ok(false) => rep.failed.push(format!("{} n'a pas pu accepter {}", b.3, a.3)),
+                        Ok(false) => rep.failed.push(format!("{} couldn't accept {}", b.3, a.3)),
                         Err(e) => rep.failed.push(format!("{} → {} : {e}", b.3, a.3)),
                     }
                 }
                 Ok(FriendOutcome::Already) => rep.already += 1,
                 Ok(FriendOutcome::Failed(m)) => {
-                    let stop = m.contains("captcha") || m.contains("trop de requêtes");
+                    let stop = m.contains("captcha") || m.contains("too many requests");
                     rep.failed.push(format!("{} → {} : {m}", a.3, b.3));
                     if stop {
                         break 'outer; // inutile d'insister : Roblox bloque
@@ -912,13 +912,13 @@ pub async fn friend_accounts(state: State<'_, AppState>, ids: Vec<String>) -> Re
     }
     state.push_log(
         "follow",
-        format!("Amis : {} demande(s), {} acceptée(s), {} déjà amis", rep.sent, rep.accepted, rep.already),
+        format!("Friends: {} request(s), {} accepted, {} already friends", rep.sent, rep.accepted, rep.already),
     );
     Ok(rep)
 }
 
 // ---------------------------------------------------------------------------
-// Serveurs privés
+// Private servers
 // ---------------------------------------------------------------------------
 
 fn cookie_of(state: &AppState, id: &str) -> Result<String> {
@@ -955,15 +955,15 @@ pub async fn buy_private_server(
 ) -> Result<u64> {
     let name = name.trim().to_string();
     if name.is_empty() || name.len() > 50 {
-        return Err(AppError::Other("Nom de serveur invalide (1 à 50 caractères).".into()));
+        return Err(AppError::Other("Invalid server name (1 to 50 characters).".into()));
     }
     let cookie = cookie_of(&state, &id)?;
     let place = launch::resolve_place_id(&target)?;
     let universe = roblox::universe_for_place(place)
         .await
-        .ok_or_else(|| AppError::Other("Jeu introuvable.".into()))?;
+        .ok_or_else(|| AppError::Other("Game not found.".into()))?;
     let new_id = roblox::private_server_buy(&cookie, universe, &name, expected_price).await?;
-    state.push_log("launch", format!("Serveur privé « {name} » acheté ({expected_price} R$)"));
+    state.push_log("launch", format!("Private server “{name}” bought ({expected_price} R$)"));
     Ok(new_id)
 }
 
@@ -1016,7 +1016,7 @@ pub async fn run_macro(state: State<'_, AppState>, name: String, pid: Option<u32
         None => proc::roblox_processes().into_iter().map(|p| p.pid).collect(),
     };
     let n = crate::macros::run(&state, &name, &pids, &custom)?;
-    state.push_log("launch", format!("Macro « {name} » lancée sur {n} client(s)"));
+    state.push_log("launch", format!("Macro “{name}” launched on {n} client(s)"));
     Ok(n)
 }
 
@@ -1036,7 +1036,7 @@ pub fn stop_macros(state: State<'_, AppState>, name: Option<String>) -> usize {
 
 fn exports_dir() -> Result<std::path::PathBuf> {
     let mut dir = dirs::data_local_dir()
-        .ok_or_else(|| AppError::Io("dossier de données local introuvable".into()))?;
+        .ok_or_else(|| AppError::Io("local data folder not found".into()))?;
     dir.push("RoAccount");
     dir.push("exports");
     std::fs::create_dir_all(&dir)?;
@@ -1063,7 +1063,7 @@ pub fn export_cookies(state: State<'_, AppState>, ids: Vec<String>, format: Stri
             .collect()
     };
     if rows.is_empty() {
-        return Err(AppError::Other("Aucun compte à exporter.".into()));
+        return Err(AppError::Other("No account to export.".into()));
     }
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1087,7 +1087,7 @@ pub fn export_cookies(state: State<'_, AppState>, ids: Vec<String>, format: Stri
         serde_json::to_string_pretty(&arr).map_err(|e| AppError::Other(e.to_string()))?
     };
     std::fs::write(&path, body)?;
-    state.push_log("stop", format!("{} cookie(s) exporté(s) en clair", rows.len()));
+    state.push_log("stop", format!("{} cookie(s) exported in clear text", rows.len()));
     Ok(path.to_string_lossy().to_string())
 }
 
@@ -1115,10 +1115,10 @@ pub async fn import_accounts(
     let text = if !trimmed.contains('\n') && std::path::Path::new(trimmed).is_file() {
         let meta = std::fs::metadata(trimmed)?;
         if meta.len() > 8 * 1024 * 1024 {
-            return Err(AppError::Other("Fichier trop volumineux (8 Mo max).".into()));
+            return Err(AppError::Other("File too large (8 MB max).".into()));
         }
         std::fs::read_to_string(trimmed)
-            .map_err(|_| AppError::Other("Fichier illisible (texte ou JSON attendu).".into()))?
+            .map_err(|_| AppError::Other("Unreadable file (text or JSON expected).".into()))?
     } else {
         input.clone()
     };
@@ -1127,10 +1127,10 @@ pub async fn import_accounts(
     let mut rep = ImportReport { found: items.len() as u32, ..Default::default() };
     if items.is_empty() {
         return Err(AppError::Other(
-            "Aucun cookie .ROBLOSECURITY trouvé. Colle un export JSON ou des cookies (un par ligne).".into(),
+            "No .ROBLOSECURITY cookie found. Paste a JSON export or cookies (one per line).".into(),
         ));
     }
-    let default_group = group.filter(|g| !g.trim().is_empty()).unwrap_or_else(|| "Importé".into());
+    let default_group = group.filter(|g| !g.trim().is_empty()).unwrap_or_else(|| "Imported".into());
 
     for it in items {
         let tail: String = it.cookie.chars().rev().take(6).collect::<Vec<_>>().into_iter().rev().collect();
@@ -1152,14 +1152,14 @@ pub async fn import_accounts(
                 let res = { state.vault.lock().unwrap().add(account) };
                 match res {
                     Ok(_) => rep.added += 1,
-                    Err(e) => rep.failed.push(format!("…{tail} : {e}")),
+                    Err(e) => rep.failed.push(format!("…{tail}: {e}")),
                 }
             }
-            Err(e) => rep.failed.push(format!("…{tail} : {e}")),
+            Err(e) => rep.failed.push(format!("…{tail}: {e}")),
         }
         tokio::time::sleep(Duration::from_millis(400)).await;
     }
-    state.push_log("launch", format!("Import : {} compte(s) ajouté(s) sur {}", rep.added, rep.found));
+    state.push_log("launch", format!("Import: {} account(s) added out of {}", rep.added, rep.found));
     Ok(rep)
 }
 
@@ -1210,13 +1210,13 @@ pub async fn roblox_version() -> crate::perf::RobloxVersion {
 pub fn open_path(kind: String) -> Result<()> {
     let mut dir = match kind.as_str() {
         "roblox-logs" => {
-            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("folder not found".into()))?;
             d.push("Roblox");
             d.push("logs");
             d
         }
         _ => {
-            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("folder not found".into()))?;
             d.push("RoAccount");
             if kind == "exports" {
                 d.push("exports");
@@ -1239,7 +1239,7 @@ pub fn open_path(kind: String) -> Result<()> {
     #[cfg(not(target_os = "windows"))]
     {
         let _ = dir;
-        Err(AppError::Other("Disponible uniquement sous Windows.".into()))
+        Err(AppError::Other("Only available on Windows.".into()))
     }
 }
 
@@ -1251,10 +1251,10 @@ pub fn save_export(name: String, content: String) -> Result<String> {
         && name.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
         && !name.contains("..");
     if !ok {
-        return Err(AppError::Other("Nom de fichier invalide.".into()));
+        return Err(AppError::Other("Invalid file name.".into()));
     }
     if content.len() > 1_000_000 {
-        return Err(AppError::Other("Fichier trop gros.".into()));
+        return Err(AppError::Other("File too large.".into()));
     }
     let mut path = exports_dir()?;
     path.push(name);
@@ -1265,7 +1265,7 @@ pub fn save_export(name: String, content: String) -> Result<String> {
 /// Supprime les fichiers de logs de Roblox. Renvoie le nombre de fichiers supprimés.
 #[tauri::command]
 pub fn clean_roblox_logs() -> Result<usize> {
-    let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+    let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("folder not found".into()))?;
     d.push("Roblox");
     d.push("logs");
     let mut n = 0usize;
@@ -1357,7 +1357,7 @@ pub fn set_autostart(enabled: bool, minimized: bool) -> Result<()> {
         }
         let out = cmd.creation_flags(0x0800_0000).output().map_err(|e| AppError::Other(e.to_string()))?;
         if !out.status.success() && enabled {
-            return Err(AppError::Other("Impossible d'écrire la clé de démarrage Windows.".into()));
+            return Err(AppError::Other("Couldn't write the Windows startup key.".into()));
         }
     }
     #[cfg(not(target_os = "windows"))]
@@ -1387,7 +1387,7 @@ pub fn schedule_shutdown(minutes: u32) -> Result<()> {
     #[cfg(not(target_os = "windows"))]
     {
         let _ = minutes;
-        Err(AppError::Other("Disponible uniquement sous Windows.".into()))
+        Err(AppError::Other("Only available on Windows.".into()))
     }
 }
 

@@ -40,9 +40,9 @@ pub fn run() {
             {
                 let st = app.state::<AppState>();
                 match singleton::state() {
-                    1 => st.push_log("info", "Multi-compte : verrou pris, les clients peuvent tourner côte à côte".into()),
-                    2 => st.push_log("warn", "Multi-compte : un Roblox tournait déjà au démarrage de RoAccount. Ferme-le (Tout fermer) puis relance tes comptes".into()),
-                    3 => st.push_log("error", "Multi-compte : impossible de créer le verrou".into()),
+                    1 => st.push_log("info", "Multi-instance: lock taken, clients can run side by side".into()),
+                    2 => st.push_log("warn", "Multi-instance: Roblox was already running when RoAccount started. Close it (Close all), then relaunch your accounts".into()),
+                    3 => st.push_log("error", "Multi-instance: couldn't create the lock".into()),
                     _ => {}
                 }
             }
@@ -144,5 +144,5 @@ pub fn run() {
             commands::cancel_batch,
         ])
         .run(tauri::generate_context!())
-        .expect("erreur au démarrage de RoAccount");
+        .expect("error while starting RoAccount");
 }

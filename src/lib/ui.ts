@@ -49,11 +49,11 @@ export function fmtDuration(s: number): string {
 }
 
 export function fmtMem(mb: number): string {
-  return mb >= 1024 ? `${(mb / 1024).toFixed(1).replace(".", ",")} GB` : `${Math.round(mb)} MB`;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
 }
 
 export function fmtRate(kbps: number): string {
-  return kbps >= 1024 ? `${(kbps / 1024).toFixed(1).replace(".", ",")} MB/s` : `${Math.round(kbps)} KB/s`;
+  return kbps >= 1024 ? `${(kbps / 1024).toFixed(1)} MB/s` : `${Math.round(kbps)} KB/s`;
 }
 
 /** Lit un fichier choisi par l'utilisateur (config partagée). */

@@ -174,7 +174,7 @@ pub fn latest_version_dir() -> Option<std::path::PathBuf> {
 pub fn apply_graphics(enabled: bool, o: &GraphicsOpts) -> Result<String, String> {
     use serde_json::{json, Map, Value};
 
-    let dir = latest_version_dir().ok_or("Roblox n'est pas installé (aucune version trouvée).")?;
+    let dir = latest_version_dir().ok_or("Roblox is not installed (no version found).")?;
     let cs = dir.join("ClientSettings");
     let file = cs.join("ClientAppSettings.json");
 
@@ -227,7 +227,7 @@ pub fn apply_graphics(enabled: bool, o: &GraphicsOpts) -> Result<String, String>
     if map.is_empty() {
         // plus rien à écrire : on supprime le fichier
         let _ = std::fs::remove_file(&file);
-        return Ok("Réglages graphiques retirés.".into());
+        return Ok("Graphics settings removed.".into());
     }
     std::fs::create_dir_all(&cs).map_err(|e| e.to_string())?;
     let body = serde_json::to_vec_pretty(&Value::Object(map)).map_err(|e| e.to_string())?;

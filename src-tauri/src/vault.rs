@@ -3,7 +3,7 @@
 //! Les comptes (cookies inclus) sont sérialisés en JSON, puis chiffrés avec
 //! AES-256-GCM. La clé est dérivée du mot de passe maître via Argon2id.
 //! Le fichier final ne contient que : sel Argon2 + nonce + texte chiffré.
-//! Rien n'est jamais écrit en clair sur le disque.
+//! Rien n'est jamais écrit in clear text sur le disque.
 
 use crate::error::{AppError, Result};
 use crate::models::{AccountMeta, StoredAccount, VaultStatus};
@@ -34,7 +34,7 @@ pub struct Vault {
 impl Vault {
     pub fn new() -> Result<Self> {
         let mut dir = dirs::data_local_dir()
-            .ok_or_else(|| AppError::Io("dossier de données local introuvable".into()))?;
+            .ok_or_else(|| AppError::Io("local data folder not found".into()))?;
         dir.push("RoAccount");
         std::fs::create_dir_all(&dir)?;
         dir.push("vault.bin");
@@ -110,7 +110,7 @@ impl Vault {
     pub fn unlock(&mut self, password: &str) -> Result<()> {
         let raw = std::fs::read(&self.path)?;
         if raw.len() < 4 + SALT_LEN + NONCE_LEN || &raw[0..4] != MAGIC {
-            return Err(AppError::Io("fichier coffre corrompu".into()));
+            return Err(AppError::Io("corrupted vault file".into()));
         }
         let salt = &raw[4..4 + SALT_LEN];
         let nonce_bytes = &raw[4 + SALT_LEN..4 + SALT_LEN + NONCE_LEN];

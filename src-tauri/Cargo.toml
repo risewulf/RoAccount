@@ -2,7 +2,7 @@
 name = "roaccount"
 version = "0.2.0"
 description = "Local Roblox account manager for Windows - encrypted vault, multi-client launching."
-authors = ["Risewulf"]
+authors = ["you"]
 edition = "2021"
 rust-version = "1.77"
 

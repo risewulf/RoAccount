@@ -32,7 +32,7 @@ mod win {
         BOOL(1)
     }
 
-    /// Fenêtres visibles appartenant aux PID donnés.
+    /// Visible windows appartenant aux PID donnés.
     fn windows_of(pids: Vec<u32>) -> Vec<(HWND, u32)> {
         let mut ctx = Ctx { pids: pids.into_iter().collect(), hwnds: Vec::new() };
         unsafe {

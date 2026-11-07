@@ -3,31 +3,31 @@ use serde::Serialize;
 /// Erreur unifiée du backend. Sérialisable pour remonter proprement côté UI.
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    #[error("coffre verrouillé")]
+    #[error("vault locked")]
     VaultLocked,
 
-    #[error("mot de passe incorrect")]
+    #[error("incorrect password")]
     BadPassword,
 
-    #[error("compte introuvable")]
+    #[error("account not found")]
     AccountNotFound,
 
-    #[error("cookie .ROBLOSECURITY invalide ou expiré")]
+    #[error("invalid or expired .ROBLOSECURITY cookie")]
     InvalidCookie,
 
-    #[error("cible de lancement invalide : {0}")]
+    #[error("invalid launch target: {0}")]
     BadTarget(String),
 
-    #[error("erreur réseau : {0}")]
+    #[error("network error: {0}")]
     Network(String),
 
-    #[error("erreur de chiffrement")]
+    #[error("encryption error")]
     Crypto,
 
-    #[error("erreur d'entrée/sortie : {0}")]
+    #[error("I/O error: {0}")]
     Io(String),
 
-    #[error("lancement impossible : {0}")]
+    #[error("launch failed: {0}")]
     Launch(String),
 
     #[error("{0}")]

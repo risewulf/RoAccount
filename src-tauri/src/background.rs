@@ -1,7 +1,7 @@
-//! Boucle d'arrière-plan (toutes les ~20 s) :
+//! Boucle d'arrière-plan (every ~20 s) :
 //!  - moteur de performances (priorité, cœurs, mémoire),
 //!  - détection des clients figés,
-//!  - reconnexion / redémarrage automatique (avec disjoncteur « N essais en M min »),
+//!  - reconnexion / redémarrage automatique (avec disjoncteur « N tries in M min »),
 //!  - résumé de statut Discord.
 
 use crate::settings::Settings;
@@ -97,11 +97,11 @@ async fn check_freeze(app: &AppHandle, settings: &Settings) {
         }
     }
     for pid in to_alert {
-        state.push_log("crash", format!("Client PID {pid} figé (ne répond plus)"));
+        state.push_log("crash", format!("Client PID {pid} frozen (not responding)"));
         if settings.alert_freeze {
             discord::notify(
                 settings,
-                &format!("🧊 Un client Roblox (PID {pid}) ne répond plus — il est figé."),
+                &format!("🧊 A Roblox client (PID {pid}) is not responding — it is frozen."),
                 true,
             )
             .await;
@@ -119,9 +119,9 @@ async fn check_freeze(app: &AppHandle, settings: &Settings) {
                     tokio::time::sleep(Duration::from_secs(2)).await;
                     if relaunch(app, &id, settings).await {
                         let name = username_of(&state, &id);
-                        state.push_log("rejoin", format!("{name} figé — redémarré"));
+                        state.push_log("rejoin", format!("{name} frozen — restarted"));
                         if settings.alert_restart {
-                            discord::notify(settings, &format!("🔄 **{name}** était figé — redémarré."), false).await;
+                            discord::notify(settings, &format!("🔄 **{name}** was frozen — restarted."), false).await;
                         }
                     }
                 }
@@ -198,11 +198,11 @@ async fn perf_tick(app: &AppHandle, settings: &Settings, procs: &[crate::models:
             kill_pid(p.pid);
             tokio::time::sleep(Duration::from_secs(2)).await;
             if relaunch(app, &id, settings).await {
-                state.push_log("rejoin", format!("{name} — redémarré (mémoire {} Mo)", p.memory_mb));
+                state.push_log("rejoin", format!("{name} — restarted (memory {} MB)", p.memory_mb));
                 if settings.alert_mem_restart {
                     discord::notify(
                         settings,
-                        &format!("🧠 **{name}** redémarré : il utilisait {} Mo de mémoire.", p.memory_mb),
+                        &format!("🧠 **{name}** restarted: it was using {} MB of memory.", p.memory_mb),
                         false,
                     )
                     .await;
@@ -238,7 +238,7 @@ async fn summary(app: &AppHandle, settings: &Settings) {
         discord::notify(
             settings,
             &format!(
-                "📊 **{}** client(s) en cours — RAM {:.1} Go, CPU {:.0} %.",
+                "📊 **{}** client(s) running — RAM {:.1} GB, CPU {:.0} %.",
                 m.clients.len(),
                 ram as f32 / 1024.0,
                 cpu
@@ -270,7 +270,7 @@ async fn tick(app: &AppHandle) {
     if !settings.auto_rejoin && !settings.auto_restart {
         return;
     }
-    // coffre verrouillé → rien à faire
+    // vault locked → rien à faire
     {
         if !state.vault.lock().unwrap().is_unlocked() {
             return;
@@ -281,7 +281,7 @@ async fn tick(app: &AppHandle) {
     let window = Duration::from_secs(settings.give_up_minutes.max(1) as u64 * 60);
 
     for id in ids {
-        // délai de grâce : un client qui vient d'être lancé charge encore, Roblox ne le voit pas « en jeu »
+        // délai de grâce : un client qui vient d'être lancé charge encore, Roblox ne le voit pas « in game »
         // tout de suite — le relancer maintenant ferait expulser le client qui démarre.
         if state.recently_launched(&id, 120) {
             continue;
@@ -344,22 +344,22 @@ async fn tick(app: &AppHandle) {
         match action {
             Some(true) => {
                 if crashed {
-                    state.push_log("crash", format!("{username} a crashé"));
+                    state.push_log("crash", format!("{username} crashed"));
                     if settings.alert_crash {
-                        discord::notify(&settings, &format!("💥 **{username}** a crashé."), true).await;
+                        discord::notify(&settings, &format!("💥 **{username}** crashed."), true).await;
                     }
                 } else {
-                    state.push_log("rejoin", format!("{username} déconnecté"));
+                    state.push_log("rejoin", format!("{username} disconnected"));
                     if settings.alert_disconnect {
-                        discord::notify(&settings, &format!("🔌 **{username}** a été déconnecté."), true).await;
+                        discord::notify(&settings, &format!("🔌 **{username}** was disconnected."), true).await;
                     }
                 }
                 relaunch(app, &id, &settings).await;
-                state.push_log("rejoin", format!("{username} — relancé"));
+                state.push_log("rejoin", format!("{username} — relaunched"));
                 if settings.alert_restart {
                     discord::notify(
                         &settings,
-                        &format!("🔄 **{username}** relancé automatiquement."),
+                        &format!("🔄 **{username}** relaunched automatically."),
                         false,
                     )
                     .await;
@@ -370,13 +370,13 @@ async fn tick(app: &AppHandle) {
                 state.rejoin.lock().unwrap().remove(&id);
                 state.push_log(
                     "crash",
-                    format!("{username} — abandon après {} essais", settings.give_up_tries),
+                    format!("{username} — giving up after {} tries", settings.give_up_tries),
                 );
                 if settings.alert_give_up {
                     discord::notify(
                         &settings,
                         &format!(
-                            "⛔ **{username}** — abandon après {} tentatives en {} min.",
+                            "⛔ **{username}** — giving up after {} attempts in {} min.",
                             settings.give_up_tries, settings.give_up_minutes
                         ),
                         true,

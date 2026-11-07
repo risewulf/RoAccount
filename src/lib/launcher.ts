@@ -6,12 +6,12 @@ export type TargetKind = "game" | "private" | "user" | "none";
 /** Ce que l'utilisateur a collé : jeu, serveur privé, joueur à suivre… */
 export function detect(t: string): { kind: TargetKind; label: string } {
   const s = t.trim();
-  if (!s) return { kind: "none", label: "Colle un lien de jeu, un serveur privé, un ID de place ou un @pseudo." };
-  if (s.includes("privateServerLinkCode") || s.includes("share?code=")) return { kind: "private", label: "Serveur privé détecté" };
-  if (s.startsWith("@") || s.includes("/users/")) return { kind: "user", label: `Rejoindre ${s.startsWith("@") ? s : "ce joueur"}` };
+  if (!s) return { kind: "none", label: "Paste a game link, a private server, a place ID or an @username." };
+  if (s.includes("privateServerLinkCode") || s.includes("share?code=")) return { kind: "private", label: "Private server detected" };
+  if (s.startsWith("@") || s.includes("/users/")) return { kind: "user", label: `Join ${s.startsWith("@") ? s : "this player"}` };
   const m = s.match(/games\/(\d+)/) ?? s.match(/^(\d+)$/);
-  if (m) return { kind: "game", label: `Jeu · place ${m[1]}` };
-  return { kind: "none", label: "Cible non reconnue." };
+  if (m) return { kind: "game", label: `Game · place ${m[1]}` };
+  return { kind: "none", label: "Target not recognised." };
 }
 
 /** Un compte peut-il être lancé maintenant ? (un compte MAIN choisi à la main l'est toujours) */
@@ -36,7 +36,7 @@ export async function runProfile(p: LaunchProfile, accounts: AccountMeta[]): Pro
   } else {
     const link = det.kind === "private" ? p.target.trim() : p.privateLink;
     const mode = det.kind === "private" ? "private" : p.serverMode;
-    if (mode === "private" && !link.trim()) throw "Ce profil n'a pas de lien de serveur privé.";
+    if (mode === "private" && !link.trim()) throw "This profile has no private server link.";
     launched = await api.launchBatchServers(ids, p.target, mode, link, p.cooldownMs);
   }
   return { launched, skipped };

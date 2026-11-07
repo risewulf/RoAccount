@@ -32,11 +32,11 @@ export function PrivateView() {
 
   async function buy() {
     const p = Number(price);
-    if (!accId || !name.trim() || !Number.isFinite(p) || p < 0) { store.toast("Renseigne le jeu, un nom et le prix affiché par Roblox."); return; }
+    if (!accId || !name.trim() || !Number.isFinite(p) || p < 0) { store.toast("Enter the game, a name and the price shown by Roblox."); return; }
     setBusy(true);
     try {
       await api.buyPrivateServer(accId, target, name.trim(), p);
-      store.toast("Serveur privé acheté.");
+      store.toast("Private server bought.");
       setOk(false); setName("");
       await load();
     } catch (e) { store.toast(String(e)); } finally { setBusy(false); }
@@ -45,71 +45,71 @@ export function PrivateView() {
   async function update(s: PrivateServer, patch: { name?: string; newLink?: boolean; active?: boolean }) {
     try {
       await api.updatePrivateServer(accId, s.id, patch);
-      store.toast("Serveur privé mis à jour.");
+      store.toast("Private server updated.");
       await load();
     } catch (e) { store.toast(String(e)); }
   }
 
   function rename(s: PrivateServer) {
-    const n = window.prompt("Nouveau nom du serveur privé :", s.name);
+    const n = window.prompt("New private server name:", s.name);
     if (n && n.trim() && n.trim() !== s.name) void update(s, { name: n.trim() });
   }
 
   function regenerate(s: PrivateServer) {
-    if (window.confirm("Générer un nouveau lien ? L'ancien lien ne fonctionnera plus.")) void update(s, { newLink: true });
+    if (window.confirm("Generate a new link? The old link will stop working.")) void update(s, { newLink: true });
   }
 
   function useLink(s: PrivateServer) {
-    if (!s.link) { store.toast("Roblox n'a pas fourni de lien pour ce serveur."); return; }
+    if (!s.link) { store.toast("Roblox gave no link for this server."); return; }
     store.updateSettings({ privateLink: s.link, serverMode: "private" });
-    store.toast(`Mode « Serveur privé » activé (${selected.size || "0"} compte(s) sélectionné(s)) — lance depuis l'onglet Lancement.`);
+    store.toast(`“Private server” mode on (${selected.size || "0"} account(s) selected) — launch from the Launch tab.`);
   }
 
   async function copy(s: PrivateServer) {
     if (!s.link) return;
-    try { await navigator.clipboard.writeText(s.link); store.toast("Lien copié."); }
+    try { await navigator.clipboard.writeText(s.link); store.toast("Link copied."); }
     catch { store.toast(s.link); }
   }
 
   return (
     <section>
       <div className="vhead">
-        <div><h1>Serveurs privés</h1><p>Achète et gère les serveurs privés de tes comptes, puis lance-y ta sélection.</p></div>
-        <button className="btn" onClick={load} disabled={busy || !accId}><IconRefresh />{busy ? "Chargement…" : "Charger"}</button>
+        <div><h1>Private servers</h1><p>Buy and manage your accounts' private servers, then launch your selection into them.</p></div>
+        <button className="btn" onClick={load} disabled={busy || !accId}><IconRefresh />{busy ? "Loading…" : "Load"}</button>
       </div>
 
       <div className="card">
-        <h3>Compte</h3>
-        <p className="sub">Les serveurs privés appartiennent à un compte précis.</p>
-        <select className="sort-select select-wide" value={accId} onChange={(e) => { setAccId(e.target.value); setServers(null); }} aria-label="Compte">
+        <h3>Account</h3>
+        <p className="sub">Private servers belong to a specific account.</p>
+        <select className="sort-select select-wide" value={accId} onChange={(e) => { setAccId(e.target.value); setServers(null); }} aria-label="Account">
           {usable.map((a) => <option key={a.id} value={a.id}>{a.username}</option>)}
         </select>
       </div>
 
       <div className="card">
-        <h3>Mes serveurs privés</h3>
+        <h3>My private servers</h3>
         {servers === null ? (
-          <div className="placeholder">Clique sur « Charger » pour afficher les serveurs privés de ce compte.</div>
+          <div className="placeholder">Click “Load” to show this account's private servers.</div>
         ) : servers.length === 0 ? (
-          <div className="placeholder">Aucun serveur privé sur ce compte.</div>
+          <div className="placeholder">No private server on this account.</div>
         ) : (
           <div className="tscroll">
             <table className="table">
-              <thead><tr><th>Nom</th><th>Jeu</th><th>État</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Game</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {servers.map((s) => (
                   <tr key={s.id}>
                     <td>{s.name}</td>
                     <td>{s.game || "—"}</td>
-                    <td>{s.active == null ? "—" : s.active ? <span className="badge fav">actif</span> : <span className="badge">désactivé</span>}</td>
+                    <td>{s.active == null ? "—" : s.active ? <span className="badge fav">actif</span> : <span className="badge">off</span>}</td>
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => useLink(s)} disabled={!s.link}>Utiliser</button>{" "}
-                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => copy(s)} disabled={!s.link}>Copier le lien</button>{" "}
-                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => rename(s)}>Renommer</button>{" "}
-                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => regenerate(s)}>Nouveau lien</button>{" "}
+                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => useLink(s)} disabled={!s.link}>Use</button>{" "}
+                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => copy(s)} disabled={!s.link}>Copy link</button>{" "}
+                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => rename(s)}>Rename</button>{" "}
+                      <button className="btn" style={{ padding: "6px 10px" }} onClick={() => regenerate(s)}>New link</button>{" "}
                       {s.active != null && (
                         <button className="btn" style={{ padding: "6px 10px" }} onClick={() => update(s, { active: !s.active })}>
-                          {s.active ? "Désactiver" : "Activer"}
+                          {s.active ? "Turn off" : "Turn on"}
                         </button>
                       )}
                     </td>
@@ -122,22 +122,22 @@ export function PrivateView() {
       </div>
 
       <div className="card">
-        <h3>Acheter un serveur privé</h3>
-        <p className="sub">Dépense des Robux du compte choisi. Saisis exactement le prix mensuel affiché par Roblox pour ce jeu : s'il ne correspond pas, Roblox refuse l'achat.</p>
+        <h3>Buy a private server</h3>
+        <p className="sub">Spends Robux from the chosen account. Enter exactly the monthly price Roblox shows for this game: if it doesn't match, Roblox refuses the purchase.</p>
         <label className="field" style={{ marginBottom: 8 }}>
-          <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="roblox.com/games/… ou place ID" />
+          <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="roblox.com/games/… or place ID" />
         </label>
         <label className="field" style={{ marginBottom: 8 }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du serveur" maxLength={50} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Server name" maxLength={50} />
         </label>
         <label className="field" style={{ marginBottom: 12 }}>
-          <input value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} placeholder="Prix en Robux (ex. 100)" inputMode="numeric" />
+          <input value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} placeholder="Price in Robux (e.g. 100)" inputMode="numeric" />
         </label>
         <label className="inline" style={{ marginBottom: 12, fontSize: 13 }}>
           <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
-          Je confirme dépenser {price || "…"} Robux sur le compte {usable.find((a) => a.id === accId)?.username ?? "…"}.
+          I confirm spending {price || "…"} Robux on account {usable.find((a) => a.id === accId)?.username ?? "…"}.
         </label>
-        <button className="btn primary" disabled={busy || !ok || !name.trim() || !price} onClick={buy}>Acheter</button>
+        <button className="btn primary" disabled={busy || !ok || !name.trim() || !price} onClick={buy}>Buy</button>
       </div>
     </section>
   );

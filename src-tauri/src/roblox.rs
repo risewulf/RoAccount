@@ -295,7 +295,7 @@ pub async fn public_servers(place_id: u64) -> Result<Vec<ServerInfo>> {
     );
     let resp = client()?.get(url).send().await?;
     if !resp.status().is_success() {
-        return Err(AppError::Network(format!("serveurs HTTP {}", resp.status())));
+        return Err(AppError::Network(format!("servers HTTP {}", resp.status())));
     }
     let r: ServersResp = resp.json().await.map_err(|e| AppError::Network(e.to_string()))?;
     Ok(r
@@ -368,7 +368,7 @@ pub async fn csrf_token(cookie: &str) -> Result<String> {
         .get("x-csrf-token")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| AppError::Other("token CSRF introuvable".into()))
+        .ok_or_else(|| AppError::Other("CSRF token not found".into()))
 }
 
 // ---------------------------------------------------------------------------
@@ -409,16 +409,16 @@ pub async fn authed(
         let text = resp.text().await.unwrap_or_default();
         return Ok((status, text, headers));
     }
-    Err(AppError::Other("requête refusée (jeton CSRF)".into()))
+    Err(AppError::Other("request refused (CSRF token)".into()))
 }
 
 /// Message d'erreur lisible tiré d'une réponse d'erreur Roblox.
 fn roblox_error(status: u16, text: &str, headers: &reqwest::header::HeaderMap) -> String {
     if headers.contains_key("rblx-challenge-id") {
-        return "Roblox demande une vérification (captcha) — réessaie plus tard".into();
+        return "Roblox is asking for a verification (captcha) — try again later".into();
     }
     if status == 429 {
-        return "trop de requêtes (limite Roblox) — réessaie plus tard".into();
+        return "too many requests (Roblox limit) — try again later".into();
     }
     serde_json::from_str::<serde_json::Value>(text)
         .ok()
@@ -505,7 +505,7 @@ fn param_after(s: &str, key: &str) -> Option<String> {
 pub async fn resolve_private_link(cookie: &str, link: &str) -> Result<(u64, String, String)> {
     let link = link.trim();
     if !link.starts_with("https://www.roblox.com/") && !link.starts_with("https://roblox.com/") {
-        return Err(AppError::BadTarget("lien de serveur privé invalide".into()));
+        return Err(AppError::BadTarget("invalid private server link".into()));
     }
     let resp = client()?
         .get(link)
@@ -519,7 +519,7 @@ pub async fn resolve_private_link(cookie: &str, link: &str) -> Result<(u64, Stri
         .or_else(|_| crate::launch::resolve_place_id(link))?;
     let link_code = param_after(&final_url, "privateServerLinkCode=")
         .or_else(|| param_after(link, "privateServerLinkCode="))
-        .ok_or_else(|| AppError::BadTarget("code du serveur privé introuvable dans le lien".into()))?;
+        .ok_or_else(|| AppError::BadTarget("private server code not found in the link".into()))?;
 
     // accessCode : dans l'appel JS joinPrivateGame(...) ou dans un champ accessCode
     let hay = body
@@ -528,7 +528,7 @@ pub async fn resolve_private_link(cookie: &str, link: &str) -> Result<(u64, Stri
         .map(|i| &body[i..body.len().min(i + 400)])
         .unwrap_or("");
     let access = find_uuid(hay).ok_or_else(|| {
-        AppError::Other("impossible de résoudre le lien (le compte a-t-il accès à ce serveur privé ?)".into())
+        AppError::Other("couldn't resolve the link (does the account have access to this private server?)".into())
     })?;
     Ok((place_id, access, link_code))
 }
@@ -537,7 +537,7 @@ fn pick_u64(v: &serde_json::Value, keys: &[&str]) -> Option<u64> {
     keys.iter().find_map(|k| v[*k].as_u64())
 }
 
-/// Liste les serveurs privés du compte (onglet « Mes serveurs privés »).
+/// Liste les serveurs privés du compte (onglet « My private servers »).
 pub async fn private_servers(cookie: &str) -> Result<Vec<crate::models::PrivateServer>> {
     let url = "https://games.roblox.com/v1/private-servers?privateServersTab=MyPrivateServers&itemsPerPage=50";
     let (st, text, h) = authed(cookie, reqwest::Method::GET, url, None).await?;
@@ -554,7 +554,7 @@ pub async fn private_servers(cookie: &str) -> Result<Vec<crate::models::PrivateS
         };
         out.push(crate::models::PrivateServer {
             id,
-            name: e["name"].as_str().unwrap_or("Serveur privé").to_string(),
+            name: e["name"].as_str().unwrap_or("Private server").to_string(),
             game: e["game"]["name"].as_str().or_else(|| e["gameName"].as_str()).unwrap_or("").to_string(),
             place_id: pick_u64(&e["game"], &["placeId", "rootPlaceId", "id"]).or_else(|| pick_u64(&e, &["placeId"])),
             link: None,

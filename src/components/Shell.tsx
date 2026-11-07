@@ -14,27 +14,27 @@ import {
 interface NavDef { id: ViewId; label: string; icon: ReactNode; }
 
 export const MAIN_NAV: NavDef[] = [
-  { id: "accueil", label: "Accueil", icon: <IconHome /> },
-  { id: "jouer", label: "Jouer", icon: <IconPlay /> },
-  { id: "comptes", label: "Comptes", icon: <IconUser /> },
-  { id: "perf", label: "Performances", icon: <IconGauge /> },
+  { id: "accueil", label: "Home", icon: <IconHome /> },
+  { id: "jouer", label: "Play", icon: <IconPlay /> },
+  { id: "comptes", label: "Accounts", icon: <IconUser /> },
+  { id: "perf", label: "Performance", icon: <IconGauge /> },
 ];
 export const TOOLS_NAV: NavDef[] = [
-  { id: "serveurs", label: "Serveurs", icon: <IconServer /> },
-  { id: "moniteur", label: "Moniteur", icon: <IconPulse /> },
-  { id: "historique", label: "Historique", icon: <IconClock /> },
+  { id: "serveurs", label: "Servers", icon: <IconServer /> },
+  { id: "moniteur", label: "Monitor", icon: <IconPulse /> },
+  { id: "historique", label: "History", icon: <IconClock /> },
   { id: "discord", label: "Discord", icon: <IconBell /> },
   { id: "debug", label: "Debug", icon: <IconTerminal /> },
   { id: "macros", label: "Macros", icon: <IconCode /> },
-  { id: "outils", label: "Outils", icon: <IconTool /> },
+  { id: "outils", label: "Tools", icon: <IconTool /> },
 ];
 export const SETTINGS_NAV: NavDef[] = [
-  { id: "s-lancement", label: "Lancement", icon: <IconRocket /> },
-  { id: "s-apparence", label: "Apparence", icon: <IconPalette /> },
-  { id: "s-securite", label: "Sécurité", icon: <IconShield /> },
-  { id: "s-donnees", label: "Données", icon: <IconDatabase /> },
-  { id: "s-apropos", label: "À propos", icon: <IconInfo /> },
-  { id: "s-raccourcis", label: "Raccourcis", icon: <IconKeyboard /> },
+  { id: "s-lancement", label: "Launch", icon: <IconRocket /> },
+  { id: "s-apparence", label: "Appearance", icon: <IconPalette /> },
+  { id: "s-securite", label: "Security", icon: <IconShield /> },
+  { id: "s-donnees", label: "Data", icon: <IconDatabase /> },
+  { id: "s-apropos", label: "About", icon: <IconInfo /> },
+  { id: "s-raccourcis", label: "Shortcuts", icon: <IconKeyboard /> },
 ];
 
 const Dots = () => <span className="more"><i /><i /><i /></span>;
@@ -71,7 +71,7 @@ function HoldToStop({ onDone }: { onDone: () => void }) {
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onDone(); }}
     >
       <i style={{ width: p * 100 + "%" }} />
-      <span>Maintenir pour tout arrêter</span>
+      <span>Hold to stop everything</span>
     </button>
   );
 }
@@ -160,13 +160,13 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
           </button>
           {menu && (
             <div className="popover left" role="menu">
-              <div className="pop-head"><IconLock />Chiffré sur ce PC</div>
-              <button className="pop-item" onClick={() => { setMenu(false); void store.refreshAll(); store.toast("Comptes actualisés."); }}>
-                <IconRefresh />Actualiser<span className="kbd">F5</span>
+              <div className="pop-head"><IconLock />Encrypted on this PC</div>
+              <button className="pop-item" onClick={() => { setMenu(false); void store.refreshAll(); store.toast("Accounts refreshed."); }}>
+                <IconRefresh />Refresh<span className="kbd">F5</span>
               </button>
-              <button className="pop-item" onClick={() => { setMenu(false); setView("s-raccourcis"); }}><IconKeyboard />Raccourcis</button>
+              <button className="pop-item" onClick={() => { setMenu(false); setView("s-raccourcis"); }}><IconKeyboard />Shortcuts</button>
               <button className="pop-item" onClick={() => { setMenu(false); void api.openUrl("https://discord.gg/u6wWWSUz3G").catch(() => {}); }}>
-                <IconDiscord />Rejoindre notre Discord
+                <IconDiscord />Join our Discord
               </button>
               <HoldToStop onDone={() => { setMenu(false); onKillAll(); }} />
             </div>
@@ -179,29 +179,29 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
 
       <nav className="nav" aria-label="Navigation">
         {MAIN_NAV.map(mainItem)}
-        {group("tools", TOOLS_NAV, <IconTool />, "Outils", inTools)}
-        {group("settings", SETTINGS_NAV, <IconGear />, "Paramètres", inSettings)}
+        {group("tools", TOOLS_NAV, <IconTool />, "Tools", inTools)}
+        {group("settings", SETTINGS_NAV, <IconGear />, "Settings", inSettings)}
         <span className="nav-sep" />
         <div className="pop-wrap" ref={trayRef}>
-          <button className={"run-pill" + (running.length ? " on" : "")} onClick={() => setTray((t) => !t)} aria-label="Clients en cours">
+          <button className={"run-pill" + (running.length ? " on" : "")} onClick={() => setTray((t) => !t)} aria-label="Running clients">
             <span className="dia" />{running.length}
           </button>
           {tray && (
             <div className="popover right" style={{ minWidth: 330, right: -60 }}>
-              {running.length === 0 && <div className="placeholder" style={{ padding: "14px 8px" }}>Aucun client en cours.</div>}
+              {running.length === 0 && <div className="placeholder" style={{ padding: "14px 8px" }}>No running clients.</div>}
               {running.map((a) => (
                 <div key={a.id} className="pop-acc">
                   <Avatar account={a} size={28} />
                   <span>{a.alias || a.username}</span>
                   <span className="st"><i className="dot" style={{ width: 7, height: 7, borderRadius: "50%", background: a.presence === "InGame" ? "var(--ok)" : "var(--warn)" }} />
-                    {a.presence === "InGame" ? "En jeu" : "Déconnecté"}
+                    {a.presence === "InGame" ? "In game" : "Disconnected"}
                   </span>
                 </div>
               ))}
               <div className="pop-actions">
-                <button className="btn sm" onClick={() => { setTray(false); setView("accueil"); }}><IconHome />Accueil</button>
-                <button className="btn sm" onClick={() => { void api.windowAction(null, "minimize").catch((e) => store.toast(String(e))); setTray(false); }}><IconShrink />Tout réduire</button>
-                <button className="btn sm" onClick={() => { void api.arrangeWindows(settings.windowLayout).catch((e) => store.toast(String(e))); setTray(false); }}><IconGrid />Disposer en mosaïque</button>
+                <button className="btn sm" onClick={() => { setTray(false); setView("accueil"); }}><IconHome />Home</button>
+                <button className="btn sm" onClick={() => { void api.windowAction(null, "minimize").catch((e) => store.toast(String(e))); setTray(false); }}><IconShrink />Minimize all</button>
+                <button className="btn sm" onClick={() => { void api.arrangeWindows(settings.windowLayout).catch((e) => store.toast(String(e))); setTray(false); }}><IconGrid />Tile the windows</button>
               </div>
               <HoldToStop onDone={() => { setTray(false); onKillAll(); }} />
             </div>
@@ -212,8 +212,8 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
       <div className="tb-right" data-tauri-drag-region>
         <button
           className={"close-all" + (confirmKill ? " confirm" : "") + (running.length ? " live" : "")}
-          title="Fermer tous les clients Roblox"
-          aria-label="Tout fermer"
+          title="Close all Roblox clients"
+          aria-label="Close all"
           onClick={() => {
             if (!confirmKill) { setConfirmKill(true); window.setTimeout(() => setConfirmKill(false), 3000); return; }
             setConfirmKill(false);
@@ -221,30 +221,30 @@ export function TitleBar({ onLock, onKillAll }: { onLock: () => void; onKillAll:
           }}
         >
           <IconX />
-          <span>{confirmKill ? "Confirmer ?" : "Tout fermer"}</span>
+          <span>{confirmKill ? "Confirm?" : "Close all"}</span>
           {!confirmKill && running.length > 0 && <b>{running.length}</b>}
         </button>
-        <button className="tb-ghost" title="Actualiser (F5)" aria-label="Actualiser" onClick={() => { void store.refreshAll(); store.toast("Comptes actualisés."); }}><IconRefresh /></button>
+        <button className="tb-ghost" title="Refresh (F5)" aria-label="Refresh" onClick={() => { void store.refreshAll(); store.toast("Accounts refreshed."); }}><IconRefresh /></button>
         <button
           className={"tb-ghost"}
-          title={settings.tabLayout === "side" ? "Comptes en haut" : "Comptes sur le côté"}
-          aria-label="Disposition"
+          title={settings.tabLayout === "side" ? "Accounts on top" : "Accounts on the side"}
+          aria-label="Layout"
           aria-pressed={settings.tabLayout === "side"}
           onClick={() => store.updateSettings({ tabLayout: settings.tabLayout === "side" ? "top" : "side" })}
         ><IconSidebar /></button>
         <button
           className="tb-ghost"
-          title={dark ? "Mode clair" : "Mode sombre"}
-          aria-label="Thème"
+          title={dark ? "Light mode" : "Dark mode"}
+          aria-label="Theme"
           onClick={() => store.updateSettings({ theme: dark ? "light" : "dark" })}
         >{dark ? <IconSun /> : <IconMoon />}</button>
-        <button className="tb-ghost" title="Verrouiller le coffre (Ctrl+L)" aria-label="Verrouiller" onClick={onLock}><IconLock /></button>
+        <button className="tb-ghost" title="Lock the vault (Ctrl+L)" aria-label="Lock" onClick={onLock}><IconLock /></button>
         <WindowControls />
       </div>
     </header>
     <div className={"subbar-wrap" + (open ? " open" : "")} aria-hidden={!open}>
       <div className="subbar-in">
-        <nav className="nav subnav" key={shown} aria-label={shown === "tools" ? "Outils" : "Paramètres"}>
+        <nav className="nav subnav" key={shown} aria-label={shown === "tools" ? "Tools" : "Settings"}>
           {subList.map((n, i) => (
             <button
               key={n.id}
@@ -275,14 +275,14 @@ export function MultiBanner({ onKillAll }: { onKillAll: () => void }) {
   }, []);
   if (!st) return null;
   if (!st.enabled) {
-    return <div className="multi-banner"><span>Le multi-compte est désactivé : un seul client Roblox peut tourner à la fois.</span></div>;
+    return <div className="multi-banner"><span>Multi-instance is off: only one Roblox client can run at a time.</span></div>;
   }
-  if (st.state === 3) return <div className="multi-banner"><span>Impossible de créer le verrou multi-compte. Relance RoAccount en administrateur.</span></div>;
+  if (st.state === 3) return <div className="multi-banner"><span>Couldn't create the multi-instance lock. Restart RoAccount as administrator.</span></div>;
   if (st.state === 2 && st.foreign > 0) {
     return (
       <div className="multi-banner">
-        <span><b>Multi-compte bloqué.</b> Roblox était déjà ouvert quand RoAccount a démarré ({st.foreign} client{st.foreign > 1 ? "s" : ""} à lui). Ferme-{st.foreign > 1 ? "les" : "le"}, puis relance tes comptes : pas besoin de redémarrer RoAccount.</span>
-        <button className="btn sm" onClick={onKillAll}>Fermer ces clients</button>
+        <span><b>Multi-instance blocked.</b> Roblox was already open when RoAccount started ({st.foreign} client{st.foreign !== 1 ? "s" : ""} of its own). Close {st.foreign > 1 ? "them" : "it"}, then relaunch your accounts: no need to restart RoAccount.</span>
+        <button className="btn sm" onClick={onKillAll}>Close these clients</button>
       </div>
     );
   }
@@ -292,9 +292,9 @@ export function MultiBanner({ onKillAll }: { onKillAll: () => void }) {
 export function WindowControls() {
   return (
     <div className="win-ctl">
-      <button title="Réduire" aria-label="Réduire" onClick={() => void api.winControl("minimize")}><IconMin /></button>
-      <button title="Agrandir" aria-label="Agrandir" onClick={() => void api.winControl("maximize")}><IconMaxSq /></button>
-      <button className="close" title="Fermer" aria-label="Fermer" onClick={() => void api.winControl("close")}><IconX /></button>
+      <button title="Minimize" aria-label="Minimize" onClick={() => void api.winControl("minimize")}><IconMin /></button>
+      <button title="Maximize" aria-label="Maximize" onClick={() => void api.winControl("maximize")}><IconMaxSq /></button>
+      <button className="close" title="Close" aria-label="Close" onClick={() => void api.winControl("close")}><IconX /></button>
     </div>
   );
 }

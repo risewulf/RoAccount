@@ -173,7 +173,7 @@ const mockAccounts: AccountMeta[] = [
 
 let mockUnlocked = false;
 const mockMacros: MacroInfo[] = [
-  { name: "anti-afk", code: '#Requires AutoHotkey v2.0\n; Reçoit le PID du client Roblox (A_Args[1]).\npid := A_Args[1]\nLoop {\n    ControlSend "{Space}", , "ahk_pid " pid\n    Sleep 60000\n}\n' },
+  { name: "anti-afk", code: '#Requires AutoHotkey v2.0\n; Receives the Roblox client PID (A_Args[1]).\npid := A_Args[1]\nLoop {\n    ControlSend "{Space}", , "ahk_pid " pid\n    Sleep 60000\n}\n' },
 ];
 const mockRunning: RunningMacro[] = [];
 
@@ -214,7 +214,7 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return { exists: true, unlocked: mockUnlocked, count: mockAccounts.length } as T;
     case "unlock_vault":
     case "create_vault":
-      if ((args?.password as string)?.length < 1) throw "mot de passe vide";
+      if ((args?.password as string)?.length < 1) throw "empty password";
       mockUnlocked = true;
       return { exists: true, unlocked: true, count: mockAccounts.length } as T;
     case "lock_vault":
@@ -225,7 +225,7 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "add_account":
     case "login_roblox": {
       const base = cmd === "login_roblox" ? "LoggedIn" : "NewAccount";
-      const a = demo(base + (mockAccounts.length + 1), "New", (args?.group as string) || "Sans groupe", { pres: "Online", robux: 250 });
+      const a = demo(base + (mockAccounts.length + 1), "New", (args?.group as string) || "No group", { pres: "Online", robux: 250 });
       mockAccounts.push(a);
       return a as T;
     }
@@ -256,10 +256,10 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return running.map((_, i) => ({ pid: 10000 + i, name: "RobloxPlayerBeta.exe", memory_mb: 900 + Math.floor(Math.random() * 700) })) as T;
     }
     case "test_discord":
-      if (!String(args?.webhook).startsWith("https://discord.com/api/webhooks/")) throw "URL de webhook Discord invalide.";
+      if (!String(args?.webhook).startsWith("https://discord.com/api/webhooks/")) throw "Invalid Discord webhook URL.";
       return undefined as T;
     case "capture_window":
-      throw "Capture indisponible en mode démo navigateur.";
+      throw "Capture unavailable in browser demo mode.";
     case "get_settings":
       return { ...DEFAULT_SETTINGS } as T;
     case "save_settings":
@@ -267,7 +267,7 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "reveal_cookie":
       return "_|DEMO-COOKIE-non-reel-mode-navigateur|_0123456789ABCDEF" as T;
     case "change_password":
-      if (!args?.new) throw "Nouveau mot de passe vide.";
+      if (!args?.new) throw "The new password is empty.";
       return undefined as T;
     case "export_backup":
       return "C:/…/RoAccount/backups/RoAccount-demo.roavault" as T;
@@ -277,8 +277,8 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return undefined as T;
     case "get_log":
       return [
-        { time: Math.floor(Date.now() / 1000) - 60, kind: "launch", message: "Lot lancé — 3 compte(s)" },
-        { time: Math.floor(Date.now() / 1000) - 20, kind: "rejoin", message: "ZephyrBlox déconnecté — relancé" },
+        { time: Math.floor(Date.now() / 1000) - 60, kind: "launch", message: "Batch launched — 3 account(s)" },
+        { time: Math.floor(Date.now() / 1000) - 20, kind: "rejoin", message: "ZephyrBlox disconnected — relaunched" },
       ] as T;
     case "clear_log":
       return undefined as T;
@@ -289,11 +289,11 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "set_mute":
       return 2 as T;
     case "pc_info":
-      return { cpu_name: "AMD Ryzen 5 5600 (démo)", cpu_threads: 12, ram_total_mb: 16384, ram_free_mb: 7900, os: "Windows 11 (démo)" } as T;
+      return { cpu_name: "AMD Ryzen 5 5600 (demo)", cpu_threads: 12, ram_total_mb: 16384, ram_free_mb: 7900, os: "Windows 11 (demo)" } as T;
     case "get_news":
       return [
-        { date: "2026-11-06", title: "Nouvelles fonctions", body: "Macros AutoHotkey, serveurs différents par compte, compte MAIN, alertes avec ping, disposition Tiny…", url: "https://roaccount.xyz" },
-        { date: "2026-11-01", title: "RoAccount 0.1", body: "Première version : coffre chiffré, multi-instance, auto-rejoin." },
+        { date: "2026-11-06", title: "New features", body: "AutoHotkey macros, a different server per account, MAIN account, alerts with a ping, Tiny layout…", url: "https://roaccount.xyz" },
+        { date: "2026-11-01", title: "RoAccount 0.1", body: "First version: encrypted vault, multi-instance, auto-rejoin." },
       ] as T;
     case "open_url":
       return undefined as T;
@@ -314,14 +314,14 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     }
     case "friend_accounts": {
       const n = ((args?.ids as string[]) ?? []).filter((id) => !mockAccounts.find((x) => x.id === id)?.main).length;
-      if (n < 2) throw "Sélectionne au moins 2 comptes (le compte MAIN est exclu).";
+      if (n < 2) throw "Select at least 2 accounts (the MAIN account is excluded).";
       const pairs = (n * (n - 1)) / 2;
       return { pairs, sent: pairs, accepted: pairs, already: 0, failed: [] } as T;
     }
     case "list_private_servers":
       return [
-        { id: 111, name: "Mon serveur Adopt Me", game: "Adopt Me!", place_id: 920587237, link: "https://www.roblox.com/games/920587237/Adopt-Me?privateServerLinkCode=000000000000000000000000000000", active: true },
-        { id: 222, name: "Farm privé", game: "Pet Simulator 99", place_id: 8737899170, link: null, active: false },
+        { id: 111, name: "My Adopt Me server", game: "Adopt Me!", place_id: 920587237, link: "https://www.roblox.com/games/920587237/Adopt-Me?privateServerLinkCode=000000000000000000000000000000", active: true },
+        { id: 222, name: "Private farm", game: "Pet Simulator 99", place_id: 8737899170, link: null, active: false },
       ] as T;
     case "buy_private_server":
       return 333 as T;
@@ -352,8 +352,8 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "export_cookies":
       return "C:/…/RoAccount/exports/comptes-cookies-demo.json" as T;
     case "import_accounts": {
-      if (!String(args?.input).includes("WARNING")) throw "Aucun cookie .ROBLOSECURITY trouvé. Colle un export JSON ou des cookies (un par ligne).";
-      return { found: 2, added: 1, failed: ["…ABCDEF : cookie .ROBLOSECURITY invalide ou expiré"] } as T;
+      if (!String(args?.input).includes("WARNING")) throw "No .ROBLOSECURITY cookie found. Paste a JSON export or cookies (one per line).";
+      return { found: 2, added: 1, failed: ["…ABCDEF: invalid or expired .ROBLOSECURITY cookie"] } as T;
     }
     case "set_priority":
       return undefined as T;

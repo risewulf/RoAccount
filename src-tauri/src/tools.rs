@@ -31,7 +31,7 @@ pub async fn fetch_news() -> Result<Vec<NewsItem>> {
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(AppError::Network(format!("actualités HTTP {}", resp.status())));
+        return Err(AppError::Network(format!("news HTTP {}", resp.status())));
     }
     resp.json::<Vec<NewsItem>>().await.map_err(|e| AppError::Network(e.to_string()))
 }
@@ -47,7 +47,7 @@ pub fn open_url(url: &str) -> Result<()> {
     ];
     let ok_chars = url.chars().all(|c| c.is_ascii_alphanumeric() || "/:._-?=#%&~".contains(c));
     if !ok_chars || !ALLOWED.iter().any(|a| url == *a || url.starts_with(&format!("{a}/"))) {
-        return Err(AppError::Other("Lien non autorisé.".into()));
+        return Err(AppError::Other("Link not allowed.".into()));
     }
     #[cfg(target_os = "windows")]
     {

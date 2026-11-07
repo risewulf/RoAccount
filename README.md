@@ -30,7 +30,7 @@ Tauri 2 · Rust · React
 
 > **Important:** close every Roblox client **before** starting RoAccount. Multi-client only works if RoAccount starts first.
 
-The interface is in French.
+The interface is in English.
 
 ## What it does
 

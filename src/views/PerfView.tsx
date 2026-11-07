@@ -22,18 +22,18 @@ const BASE_OFF: Patch = {
 
 const PRESETS: { id: "max" | "balanced" | "defaults"; name: string; desc: string; lines: string[]; more: string; patch: Patch }[] = [
   {
-    id: "max", name: "Max comptes", desc: "Un maximum de clients, un minimum de détails.",
-    lines: ["10 FPS", "Graphismes au minimum", "Clients en minuscule"], more: "+6 réglages",
+    id: "max", name: "Max accounts", desc: "As many clients as possible, minimum detail.",
+    lines: ["10 FPS", "Minimum graphics", "Tiny clients"], more: "+6 settings",
     patch: { ...BASE_OFF, fpsCap: 10, lowestGraphics: true, msaa: 1, textures: "min", noGrass: true, tinyOnLaunch: true, muteOnLaunch: true, adaptiveLimits: true, spreadCores: true, trimMemory: true },
   },
   {
-    id: "balanced", name: "Équilibré", desc: "Un bon départ pour la plupart des PC.",
-    lines: ["30 FPS", "Graphismes au minimum", "Fenêtres visibles"], more: "+1 réglage",
+    id: "balanced", name: "Balanced", desc: "A good start for most PCs.",
+    lines: ["30 FPS", "Minimum graphics", "Visible windows"], more: "+1 setting",
     patch: { ...BASE_OFF, fpsCap: 30, lowestGraphics: true, adaptiveLimits: true },
   },
   {
-    id: "defaults", name: "Défauts Roblox", desc: "RoAccount laisse Roblox tel quel.",
-    lines: ["Pas de limite de FPS", "Tes propres graphismes", "Fenêtres visibles"], more: "+1 réglage",
+    id: "defaults", name: "Roblox defaults", desc: "RoAccount leaves Roblox as it is.",
+    lines: ["No FPS limit", "Your own graphics", "Visible windows"], more: "+1 setting",
     patch: { ...BASE_OFF },
   },
 ];
@@ -66,7 +66,7 @@ export function PerfView() {
     const t = window.setTimeout(() => {
       const any = s.fpsCap > 0 || s.lowestGraphics || s.msaa > 0 || s.textures !== "default" || s.render !== "default" || s.graySky || s.noGrass;
       api.applyGraphics(any, { fpsCap: s.fpsCap, lowestGraphics: s.lowestGraphics, msaa: s.msaa, textures: s.textures, render: s.render, graySky: s.graySky, noGrass: s.noGrass })
-        .then(() => store.toast(any ? "Réglages graphiques écrits — actifs au prochain lancement d'un client." : "Réglages graphiques retirés."))
+        .then(() => store.toast(any ? "Graphics settings written — active on the next client launch." : "Graphics settings removed."))
         .catch((e) => store.toast(String(e)));
     }, 700);
     return () => window.clearTimeout(t);
@@ -94,7 +94,7 @@ export function PerfView() {
       await new Promise((r) => setTimeout(r, 2000));
     }
     setMeasuring(0);
-    if (!samples.length) { store.toast("Aucun client en jeu : lance quelques comptes d'abord."); return; }
+    if (!samples.length) { store.toast("No client in game: launch a few accounts first."); return; }
     const avg = (f: (x: (typeof samples)[number]) => number) => samples.reduce((a, x) => a + f(x), 0) / samples.length;
     const mem = avg((x) => x.mem), cpu = avg((x) => x.cpu), n = Math.round(avg((x) => x.n));
     const budget = total * 0.8 - (avg((x) => x.used) - mem * n);
@@ -112,20 +112,20 @@ export function PerfView() {
       for (const k of PERF_KEYS) if (k in obj && typeof obj[k] === typeof DEFAULT_SETTINGS[k]) patch[k] = obj[k];
       if (!Object.keys(patch).length) throw new Error("vide");
       store.updateSettings({ ...(patch as Patch), preset: "custom" });
-      store.toast("Configuration chargée.");
+      store.toast("Configuration loaded.");
       setShareOpen(null); setPasteTxt("");
-    } catch { store.toast("Code ou fichier de configuration invalide."); }
+    } catch { store.toast("Invalid code or configuration file."); }
   }
 
   return (
     <div className="page narrow">
       <div className="set-head">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <h1>Performances</h1>
-          {!current && <span className="tag">Ton mélange</span>}
+          <h1>Performance</h1>
+          {!current && <span className="tag">Your mix</span>}
         </div>
       </div>
-      <p className="sub" style={{ margin: "-12px 0 18px" }}>Choisis à quel point RoAccount sollicite ton PC. Les réglages graphiques s'appliquent aux prochains clients lancés.</p>
+      <p className="sub" style={{ margin: "-12px 0 18px" }}>Choose how hard RoAccount works your PC. Graphics settings apply to the next clients you launch.</p>
 
       <div className="presets">
         {PRESETS.map((p) => (
@@ -140,111 +140,111 @@ export function PerfView() {
       </div>
 
       <div className="card">
-        <Row title="Pour ce PC" desc="Observe tes clients en jeu pendant environ 25 secondes, puis te conseille quoi activer. Rien de nouveau n'est lancé.">
-          <span className="sub">Prévoir pour</span>
+        <Row title="For this PC" desc="Watches your in-game clients for about 25 seconds, then advises what to turn on. Nothing new is launched.">
+          <span className="sub">Plan for</span>
           <NumInput value={plan} onChange={setPlan} min={1} max={60} width={70} />
           <span className="sub">clients</span>
-          <button className="btn solid" disabled={measuring > 0} onClick={() => void measure()}>{measuring ? `${measuring} %` : "Mesurer"}</button>
+          <button className="btn solid" disabled={measuring > 0} onClick={() => void measure()}>{measuring ? `${measuring}%` : "Measure"}</button>
         </Row>
         {result && (
           <div className="explain" style={{ paddingTop: 0 }}>
-            <b style={{ color: "var(--fg)" }}>{result.n} client{result.n > 1 ? "s" : ""}</b> utilisent en moyenne {fmtMem(result.mem)} et {result.cpu.toFixed(1).replace(".", ",")} % de CPU chacun.
-            Pour <b style={{ color: "var(--fg)" }}>{plan}</b> : environ {fmtMem(result.predicted)} de mémoire, pour {fmtMem(Math.max(0, result.budget))} de marge sur {fmtMem(result.ramTotal)}.
-            Conseil : <b style={{ color: "var(--fg)" }}>{result.advice === "max" ? "Max comptes" : "Équilibré"}</b>.{" "}
-            <button className="link-btn" onClick={() => store.updateSettings({ ...PRESETS.find((p) => p.id === result.advice)!.patch, preset: result.advice })}>Appliquer</button>
+            <b style={{ color: "var(--fg)" }}>{result.n} client{result.n !== 1 ? "s" : ""}</b> use on average {fmtMem(result.mem)} and {result.cpu.toFixed(1)}% CPU each.
+            For <b style={{ color: "var(--fg)" }}>{plan}</b>: about {fmtMem(result.predicted)} of memory, leaving {fmtMem(Math.max(0, result.budget))} spare out of {fmtMem(result.ramTotal)}.
+            Conseil : <b style={{ color: "var(--fg)" }}>{result.advice === "max" ? "Max accounts" : "Balanced"}</b>.{" "}
+            <button className="link-btn" onClick={() => store.updateSettings({ ...PRESETS.find((p) => p.id === result.advice)!.patch, preset: result.advice })}>Apply</button>
           </div>
         )}
       </div>
 
-      <h2 className="group-title">Réglage fin</h2>
+      <h2 className="group-title">Fine tuning</h2>
       <div className="card">
-        <Row title="Limite de FPS" desc="Le nombre maximal d'images par seconde dessinées par chaque client. Plus bas, moins de charge." explain="Écrit dans les réglages de Roblox (ClientAppSettings.json) : pris en compte au prochain lancement d'un client. Roblox peut ignorer certains réglages.">
+        <Row title="FPS limit" desc="The maximum frames per second drawn by each client. Lower means less load." explain="Written to Roblox's settings (ClientAppSettings.json): applied on the next client launch. Roblox may ignore some settings.">
           <div className="fps-set">
-            {FPS_CHOICES.map((f) => <button key={f} className={s.fpsCap === f ? "on" : ""} onClick={() => set({ fpsCap: f })}>{f === 0 ? "Aucune" : f}</button>)}
+            {FPS_CHOICES.map((f) => <button key={f} className={s.fpsCap === f ? "on" : ""} onClick={() => set({ fpsCap: f })}>{f === 0 ? "None" : f}</button>)}
           </div>
         </Row>
-        <Row title="Graphismes au minimum" desc="Économise beaucoup de GPU et de CPU avec plusieurs clients.">
-          <Toggle on={s.lowestGraphics} label="Graphismes au minimum" onChange={(v) => set({ lowestGraphics: v })} />
+        <Row title="Minimum graphics" desc="Saves a lot of GPU and CPU with several clients.">
+          <Toggle on={s.lowestGraphics} label="Minimum graphics" onChange={(v) => set({ lowestGraphics: v })} />
         </Row>
         <div className="sub-card" style={{ marginBottom: 14 }}>
-          <Row title="Anticrénelage (MSAA)" desc="Plus c'est bas, plus c'est rapide, mais les bords sont crénelés.">
+          <Row title="Anti-aliasing (MSAA)" desc="The lower, the faster, but edges get jagged.">
             <select className="sel" value={s.msaa} onChange={(e) => set({ msaa: Number(e.target.value) })} aria-label="MSAA">
-              <option value={0}>Réglage Roblox</option><option value={1}>x1</option><option value={2}>x2</option><option value={4}>x4</option><option value={8}>x8</option>
+              <option value={0}>Roblox setting</option><option value={1}>x1</option><option value={2}>x2</option><option value={4}>x4</option><option value={8}>x8</option>
             </select>
           </Row>
-          <Row title="Qualité des textures" desc="Le minimum utilise le moins de mémoire GPU.">
+          <Row title="Texture quality" desc="The lowest setting uses the least GPU memory.">
             <select className="sel" value={s.textures} onChange={(e) => set({ textures: e.target.value as Settings["textures"] })} aria-label="Textures">
-              <option value="default">Réglage Roblox</option><option value="min">Minimum</option><option value="low">Basse</option><option value="med">Moyenne</option>
+              <option value="default">Roblox setting</option><option value="min">Minimum</option><option value="low">Low</option><option value="med">Average</option>
             </select>
           </Row>
-          <Row title="Mode de rendu" desc="Ne le change qu'en cas d'artefacts ou de crashs. Roblox peut ignorer Vulkan et OpenGL.">
-            <select className="sel" value={s.render} onChange={(e) => set({ render: e.target.value as Settings["render"] })} aria-label="Rendu">
-              <option value="default">Réglage Roblox</option><option value="d3d11">Direct3D 11</option><option value="vulkan">Vulkan</option><option value="opengl">OpenGL</option>
+          <Row title="Render mode" desc="Only change it if you get artifacts or crashes. Roblox may ignore Vulkan and OpenGL.">
+            <select className="sel" value={s.render} onChange={(e) => set({ render: e.target.value as Settings["render"] })} aria-label="Rendering">
+              <option value="default">Roblox setting</option><option value="d3d11">Direct3D 11</option><option value="vulkan">Vulkan</option><option value="opengl">OpenGL</option>
             </select>
           </Row>
-          <div className="inset-title">Retirer des effets visuels</div>
-          <Row title="Ciel gris" desc="Remplace la skybox par un gris uni."><Toggle on={s.graySky} label="Ciel gris" onChange={(v) => set({ graySky: v })} /></Row>
-          <Row title="Pas d'herbe" desc="Retire l'herbe du rendu."><Toggle on={s.noGrass} label="Pas d'herbe" onChange={(v) => set({ noGrass: v })} /></Row>
+          <div className="inset-title">Remove visual effects</div>
+          <Row title="Grey sky" desc="Replaces the skybox with a flat grey."><Toggle on={s.graySky} label="Grey sky" onChange={(v) => set({ graySky: v })} /></Row>
+          <Row title="No grass" desc="Removes grass from rendering."><Toggle on={s.noGrass} label="No grass" onChange={(v) => set({ noGrass: v })} /></Row>
         </div>
-        <Row title="Réduire au lancement" desc="Chaque lot est réduit dans la barre des tâches après son entrée en jeu, sans voler le focus.">
-          <Toggle on={s.minimizeOnLaunch} label="Réduire au lancement" onChange={(v) => set({ minimizeOnLaunch: v })} />
+        <Row title="Minimize on launch" desc="Each batch is minimized to the taskbar once it is in game, without stealing focus.">
+          <Toggle on={s.minimizeOnLaunch} label="Minimize on launch" onChange={(v) => set({ minimizeOnLaunch: v })} />
         </Row>
-        <Row title="Démarrer les clients en minuscule" desc="Après un lot, les fenêtres passent en petites vignettes (384×240).">
-          <Toggle on={s.tinyOnLaunch} label="Clients en minuscule" onChange={(v) => set({ tinyOnLaunch: v })} />
+        <Row title="Start clients tiny" desc="After a batch, windows shrink to small thumbnails (384×240).">
+          <Toggle on={s.tinyOnLaunch} label="Tiny clients" onChange={(v) => set({ tinyOnLaunch: v })} />
         </Row>
-        <Row title="Couper le son des clients au lancement" desc="Chaque nouveau client est mis en sourdine dès qu'il est en jeu. Rétablis le son depuis l'Accueil ou le mélangeur de Windows.">
-          <Toggle on={s.muteOnLaunch} label="Couper le son" onChange={(v) => set({ muteOnLaunch: v })} />
+        <Row title="Mute clients on launch" desc="Each new client is muted as soon as it is in game. Restore sound from Home or the Windows mixer.">
+          <Toggle on={s.muteOnLaunch} label="Mute" onChange={(v) => set({ muteOnLaunch: v })} />
         </Row>
       </div>
 
-      <h2 className="group-title">Ressources</h2>
+      <h2 className="group-title">Resources</h2>
       <div className="card">
-        <Row title="Limites adaptatives" desc="Baisse la priorité des clients qui ne sont pas au premier plan.">
-          <Toggle on={s.adaptiveLimits} label="Limites adaptatives" onChange={(v) => set({ adaptiveLimits: v })} />
+        <Row title="Adaptive limits" desc="Lowers the priority of clients that are not in the foreground.">
+          <Toggle on={s.adaptiveLimits} label="Adaptive limits" onChange={(v) => set({ adaptiveLimits: v })} />
         </Row>
-        <Row title="Répartir les clients sur les cœurs" desc="Donne à chaque client deux cœurs voisins du processeur, en tournant.">
-          <Toggle on={s.spreadCores} label="Répartir sur les cœurs" onChange={(v) => set({ spreadCores: v })} />
+        <Row title="Spread clients across cores" desc="Gives each client two neighbouring CPU cores, in rotation.">
+          <Toggle on={s.spreadCores} label="Spread across cores" onChange={(v) => set({ spreadCores: v })} />
         </Row>
-        <Row title="Alléger la mémoire toutes les" desc="Décharge régulièrement la mémoire des clients sur le disque.">
+        <Row title="Trim memory every" desc="Regularly pages clients' memory out to disk.">
           <NumInput value={s.trimEveryMin} onChange={(n) => set({ trimEveryMin: n })} min={1} max={240} width={70} /><span className="sub">min</span>
-          <Toggle on={s.trimMemory} label="Alléger la mémoire" onChange={(v) => set({ trimMemory: v })} />
+          <Toggle on={s.trimMemory} label="Trim memory" onChange={(v) => set({ trimMemory: v })} />
         </Row>
-        <Row title="Brider si mémoire élevée" desc="Passe en priorité basse un client au-delà de cette taille.">
+        <Row title="Throttle when memory is high" desc="Drops a client to low priority above this size.">
           <NumInput value={s.throttleMemMb} onChange={(n) => set({ throttleMemMb: n })} min={500} max={32000} width={90} /><span className="sub">Mo</span>
-          <Toggle on={s.throttleMem} label="Brider si mémoire élevée" onChange={(v) => set({ throttleMem: v })} />
+          <Toggle on={s.throttleMem} label="Throttle when memory is high" onChange={(v) => set({ throttleMem: v })} />
         </Row>
-        <Row title="Redémarrer si mémoire élevée" desc="Arrête et relance un client au-delà de cette taille (le compte MAIN est épargné).">
+        <Row title="Restart when memory is high" desc="Stops and relaunches a client above this size (the MAIN account is spared).">
           <NumInput value={s.restartMemMb} onChange={(n) => set({ restartMemMb: n })} min={1000} max={32000} width={90} /><span className="sub">Mo</span>
-          <Toggle on={s.restartMem} label="Redémarrer si mémoire élevée" onChange={(v) => set({ restartMem: v })} />
+          <Toggle on={s.restartMem} label="Restart when memory is high" onChange={(v) => set({ restartMem: v })} />
         </Row>
       </div>
 
-      <h2 className="group-title">RoAccount lui-même</h2>
+      <h2 className="group-title">RoAccount itself</h2>
       <div className="card">
-        <Row title="FPS de l'aperçu" desc="La fréquence à laquelle chaque aperçu en direct est redessiné (plafonnée à environ 2 images par seconde, une capture d'écran étant coûteuse).">
+        <Row title="Preview FPS" desc="How often each live preview is redrawn (capped at about 2 frames per second, since a screenshot is costly).">
           <Seg value={s.previewFps} onChange={(v) => store.updateSettings({ previewFps: v })} mono options={[{ v: 5, label: "5 FPS" }, { v: 15, label: "15 FPS" }, { v: 30, label: "30 FPS" }, { v: 60, label: "60 FPS" }]} />
         </Row>
       </div>
 
-      <h2 className="group-title">Partage ta config</h2>
+      <h2 className="group-title">Share your config</h2>
       <div className="card">
         <div className="share-grid" style={{ padding: "16px 0" }}>
-          <button className="btn" onClick={async () => store.toast((await copyText(shareCode())) ? "Code de partage copié." : "Copie refusée.")}><IconCopy />Copier le code de partage</button>
-          <button className="btn" onClick={() => setShareOpen("paste")}><IconDownload />Coller un code de partage</button>
-          <button className="btn" onClick={() => void api.saveExport("roaccount-config.json", share()).then((p) => store.toast("Enregistré : " + p)).catch((e) => store.toast(String(e)))}><IconFile />Enregistrer dans un fichier</button>
-          <button className="btn" onClick={async () => { const t = await pickTextFile(".json,.txt"); if (t) importRaw(t); }}><IconUpload />Charger depuis un fichier</button>
+          <button className="btn" onClick={async () => store.toast((await copyText(shareCode())) ? "Share code copied." : "Copy blocked.")}><IconCopy />Copy share code</button>
+          <button className="btn" onClick={() => setShareOpen("paste")}><IconDownload />Paste a share code</button>
+          <button className="btn" onClick={() => void api.saveExport("roaccount-config.json", share()).then((p) => store.toast("Saved: " + p)).catch((e) => store.toast(String(e)))}><IconFile />Save to a file</button>
+          <button className="btn" onClick={async () => { const t = await pickTextFile(".json,.txt"); if (t) importRaw(t); }}><IconUpload />Load from a file</button>
         </div>
       </div>
 
       {shareOpen && (
         <div className="overlay" onClick={() => setShareOpen(null)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Coller un code de partage</h3>
-            <p>Colle le code (qui commence par <code>RoA1:</code>) ou le contenu d'un fichier de configuration.</p>
+            <h3>Paste a share code</h3>
+            <p>Paste the code (it starts with <code>RoA1:</code>) or the contents of a configuration file.</p>
             <textarea value={pasteTxt} onChange={(e) => setPasteTxt(e.target.value)} placeholder="RoA1:…" spellCheck={false} autoFocus />
             <div className="dialog-actions">
-              <button className="btn" onClick={() => setShareOpen(null)}>Annuler</button>
-              <button className="btn primary" onClick={() => importRaw(pasteTxt)}>Charger</button>
+              <button className="btn" onClick={() => setShareOpen(null)}>Cancel</button>
+              <button className="btn primary" onClick={() => importRaw(pasteTxt)}>Load</button>
             </div>
           </div>
         </div>

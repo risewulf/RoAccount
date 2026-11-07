@@ -25,19 +25,19 @@ function loadFavs(): Fav[] {
 
 function statusOf(a: AccountMeta, excludeMain: boolean): { text: string; warn: boolean; disabled: boolean } {
   // Un compte MAIN reste lançable quand on le choisit à la main : l'exclusion ne vaut que pour « tout sélectionner ».
-  const note = a.main && excludeMain ? " · hors sélection auto" : "";
-  if (a.health === "cookie_expired") return { text: "À vérifier", warn: true, disabled: true };
-  if (a.presence === "InGame" || a.running) return { text: "Déjà en jeu", warn: false, disabled: true };
-  if (a.presence === "Online" || a.presence === "Studio") return { text: "En ligne" + note, warn: false, disabled: false };
-  if (a.presence === "Offline") return { text: "Hors ligne" + note, warn: false, disabled: false };
-  return { text: "Non vérifié" + note, warn: false, disabled: false };
+  const note = a.main && excludeMain ? " · left out of auto-select" : "";
+  if (a.health === "cookie_expired") return { text: "To check", warn: true, disabled: true };
+  if (a.presence === "InGame" || a.running) return { text: "Already in game", warn: false, disabled: true };
+  if (a.presence === "Online" || a.presence === "Studio") return { text: "Online" + note, warn: false, disabled: false };
+  if (a.presence === "Offline") return { text: "Offline" + note, warn: false, disabled: false };
+  return { text: "Unchecked" + note, warn: false, disabled: false };
 }
 
 export function JouerView() {
   const store = useStore();
   const { accounts, selected, settings } = store;
   const [q, setQ] = useState("");
-  const [group, setGroup] = useState("Tous");
+  const [group, setGroup] = useState("All");
   const [favs, setFavs] = useState<Fav[]>(loadFavs);
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<Record<string, Prog>>({});
@@ -74,7 +74,7 @@ export function JouerView() {
   }, [accounts]);
 
   const list = accounts.filter((a) => {
-    if (group !== "Tous" && a.group !== group) return false;
+    if (group !== "All" && a.group !== group) return false;
     const t = (a.username + " " + a.display_name + " " + a.alias).toLowerCase();
     return !q || t.includes(q.replace(/^@/, "").toLowerCase());
   });
@@ -88,7 +88,7 @@ export function JouerView() {
     const next = [...favs, { name: name.slice(0, 24), target: settings.target }];
     setFavs(next);
     try { localStorage.setItem("roaccount.profiles", JSON.stringify(next)); } catch { /* ignore */ }
-    store.toast("Favori enregistré.");
+    store.toast("Favourite saved.");
   }
   function dropFav(t: string) {
     const next = favs.filter((f) => f.target !== t);
@@ -103,19 +103,19 @@ export function JouerView() {
     store.updateSettings({ target: p.target, serverMode: p.serverMode, privateLink: p.privateLink, cooldownMs: p.cooldownMs });
     store.clearSelection();
     store.setSelection(p.accountIds.filter((id) => accounts.some((a) => a.id === id)), true);
-    store.toast(`Profil « ${p.name} » chargé.`);
+    store.toast(`Profile “${p.name}” loaded.`);
   }
   function saveProfile() {
     const name = (pname ?? "").trim();
     if (!name) return;
-    if (!picked.length) { store.toast("Choisis d'abord les comptes à enregistrer."); return; }
+    if (!picked.length) { store.toast("Pick the accounts to save first."); return; }
     const p: LaunchProfile = {
       id: newId(), name: name.slice(0, 28), accountIds: picked.map((a) => a.id),
       target: settings.target, serverMode: settings.serverMode, privateLink: settings.privateLink, cooldownMs: settings.cooldownMs,
     };
     store.updateSettings({ profiles: [...profiles, p] });
     setPname(null);
-    store.toast(`Profil « ${p.name} » enregistré.`);
+    store.toast(`Profile “${p.name}” saved.`);
   }
   function dropProfile(id: string) {
     store.updateSettings({
@@ -128,7 +128,7 @@ export function JouerView() {
     try {
       const r = await runProfile(p, accounts);
       r.launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: p.name }); });
-      store.toast(r.launched.length ? `Profil « ${p.name} » : ${r.launched.length} client(s) lancé(s)${r.skipped ? `, ${r.skipped} ignoré(s)` : ""}.` : "Aucun compte du profil n'est disponible.");
+      store.toast(r.launched.length ? `Profile “${p.name}”: ${r.launched.length} client(s) launched${r.skipped ? `, ${r.skipped} skipped` : ""}.` : "None of the profile's accounts are available.");
       window.setTimeout(() => { void store.refreshAll(); }, 8000);
     } catch (e) { store.toast(String(e)); }
   }
@@ -136,8 +136,8 @@ export function JouerView() {
   async function launch() {
     if (busy) return;
     const ids = usable.map((a) => a.id);
-    if (!ids.length) { store.toast("Choisis au moins un compte disponible."); return; }
-    if (det.kind === "none") { store.toast("Colle une cible valide (lien de jeu, serveur privé, ID de place ou @pseudo)."); return; }
+    if (!ids.length) { store.toast("Pick at least one available account."); return; }
+    if (det.kind === "none") { store.toast("Paste a valid target (game link, private server, place ID or @username)."); return; }
     setBusy(true);
     setBatchIds(ids);
     setProg(Object.fromEntries(ids.map((id) => [id, { stage: "queued" }])));
@@ -150,11 +150,11 @@ export function JouerView() {
       } else {
         const privateLink = det.kind === "private" ? settings.target.trim() : settings.privateLink;
         const mode = det.kind === "private" ? "private" : settings.serverMode;
-        if (mode === "private" && !privateLink.trim()) { store.toast("Colle le lien du serveur privé."); setBusy(false); return; }
+        if (mode === "private" && !privateLink.trim()) { store.toast("Paste the private server link."); setBusy(false); return; }
         launched = await api.launchBatchServers(ids, settings.target, mode, privateLink, settings.cooldownMs);
       }
       launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: settings.target }); });
-      store.toast(`${launched.length} client(s) lancé(s).`);
+      store.toast(`${launched.length} client(s) launched.`);
       window.setTimeout(() => { void store.refreshAll(); }, 8000);
       if (settings.minimizeOnLaunch) window.setTimeout(() => { void api.windowAction(null, "minimize").catch(() => {}); }, 12000);
       else if (settings.tinyOnLaunch) window.setTimeout(() => { void api.arrangeWindows("tiny").catch(() => {}); }, 12000);
@@ -163,10 +163,10 @@ export function JouerView() {
   launchRef.current = () => { void launch(); };
 
   async function cancel() {
-    try { await api.cancelBatch(); store.toast("Lot annulé : les comptes restants ne seront pas lancés."); } catch (e) { store.toast(String(e)); }
+    try { await api.cancelBatch(); store.toast("Batch cancelled: the remaining accounts won't be launched."); } catch (e) { store.toast(String(e)); }
   }
 
-  // une fois « joined », la présence Roblox confirme que le compte est en jeu
+  // une fois « joined », la présence Roblox confirme que le compte est in game
   const rows = batchIds.map((id) => {
     const a = accounts.find((x) => x.id === id)!;
     const p = prog[id] ?? { stage: "queued" };
@@ -178,50 +178,50 @@ export function JouerView() {
   const idx = (s: string) => ({ queued: 0, ticket: 1, run: 2, join: 3, in: 4 } as Record<string, number>)[s] ?? 0;
 
   const sub = (r: { stage: string; p: Prog; a: AccountMeta }) => {
-    if (r.stage === "failed") return <span className="err">échec · {r.p.error}</span>;
-    if (r.stage === "cancelled") return <span>annulé</span>;
+    if (r.stage === "failed") return <span className="err">failed · {r.p.error}</span>;
+    if (r.stage === "cancelled") return <span>cancelled</span>;
     if (r.stage === "queued") return <span>en attente</span>;
-    if (r.stage === "in") return <span>en jeu</span>;
-    return <span>{r.stage === "ticket" ? "demande du ticket…" : r.stage === "run" ? "client lancé…" : "connexion au serveur…"}</span>;
+    if (r.stage === "in") return <span>in game</span>;
+    return <span>{r.stage === "ticket" ? "requesting the ticket…" : r.stage === "run" ? "client launched…" : "connecting to the server…"}</span>;
   };
 
   return (
     <div className="page">
-      <div className="page-head"><div><h1>Jouer</h1><p>Choisis les comptes, la destination, puis lance.</p></div></div>
+      <div className="page-head"><div><h1>Play</h1><p>Pick the accounts and the destination, then launch.</p></div></div>
       <div className="profiles-bar">
-        <span className="lbl" style={{ margin: 0 }}>Profils</span>
-        {profiles.length === 0 && pname === null && <span className="sub" style={{ margin: 0 }}>Enregistre « ces comptes + ce jeu + ce mode » pour le relancer en un clic.</span>}
+        <span className="lbl" style={{ margin: 0 }}>Profiles</span>
+        {profiles.length === 0 && pname === null && <span className="sub" style={{ margin: 0 }}>Save “these accounts + this game + this mode” to relaunch it in one click.</span>}
         {profiles.map((p) => (
           <span className="prof" key={p.id}>
-            <button className="prof-run" onClick={() => void runNow(p)} title={`Lancer ${p.accountIds.length} compte(s)`}><IconPlay /></button>
-            <button className="prof-name" onClick={() => applyProfile(p)} title="Charger dans la sélection">{p.name}<span className="n">{p.accountIds.length}</span></button>
-            <button className="x" onClick={() => dropProfile(p.id)} aria-label={`Supprimer ${p.name}`}><IconX /></button>
+            <button className="prof-run" onClick={() => void runNow(p)} title={`Launch ${p.accountIds.length} account(s)`}><IconPlay /></button>
+            <button className="prof-name" onClick={() => applyProfile(p)} title="Load into the selection">{p.name}<span className="n">{p.accountIds.length}</span></button>
+            <button className="x" onClick={() => dropProfile(p.id)} aria-label={`Delete ${p.name}`}><IconX /></button>
           </span>
         ))}
         {pname === null ? (
-          <button className="chip" onClick={() => { if (!picked.length) { store.toast("Choisis d'abord les comptes à enregistrer."); return; } setPname(""); }}><IconPlus />Enregistrer la sélection</button>
+          <button className="chip" onClick={() => { if (!picked.length) { store.toast("Pick the accounts to save first."); return; } setPname(""); }}><IconPlus />Save selection</button>
         ) : (
           <span className="inline">
-            <input className="txt" style={{ height: 34, width: 180 }} autoFocus value={pname} placeholder="Nom du profil" onChange={(e) => setPname(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveProfile(); if (e.key === "Escape") setPname(null); }} />
-            <button className="btn sm" onClick={saveProfile}>Enregistrer</button>
+            <input className="txt" style={{ height: 34, width: 180 }} autoFocus value={pname} placeholder="Profile name" onChange={(e) => setPname(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveProfile(); if (e.key === "Escape") setPname(null); }} />
+            <button className="btn sm" onClick={saveProfile}>Save</button>
           </span>
         )}
       </div>
       <div className="steps">
         {/* 1 — comptes */}
         <div className="step">
-          <div className="step-h"><span className={"step-n" + (picked.length ? " done" : "")}>{picked.length ? <IconCheck /> : "1"}</span>Qui joue ?</div>
+          <div className="step-h"><span className={"step-n" + (picked.length ? " done" : "")}>{picked.length ? <IconCheck /> : "1"}</span>Who plays?</div>
           <label className="field">
             <IconSearch />
-            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer par nom, @pseudo, id" aria-label="Filtrer les comptes" />
+            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name, @username, id" aria-label="Filter accounts" />
           </label>
           <div className="chips" style={{ marginTop: 12 }}>
-            <button className={"chip" + (group === "Tous" ? " on" : "")} onClick={() => setGroup("Tous")}>Tous</button>
+            <button className={"chip" + (group === "All" ? " on" : "")} onClick={() => setGroup("All")}>All</button>
             {groups.map(([g, n]) => (
               <button key={g} className={"chip" + (group === g ? " on" : "")} onClick={() => setGroup(g)}>{g}<span className="n">{n}</span></button>
             ))}
           </div>
-          <div className="sub" style={{ marginTop: 14 }}>{picked.length} sur {accounts.length} choisi{picked.length > 1 ? "s" : ""}</div>
+          <div className="sub" style={{ marginTop: 14 }}>{picked.length} of {accounts.length} selected</div>
           <div className="pick-grid">
             {list.map((a) => {
               const st = statusOf(a, settings.excludeMainFromAll);
@@ -236,17 +236,17 @@ export function JouerView() {
                 </button>
               );
             })}
-            {list.length === 0 && <div className="placeholder" style={{ gridColumn: "1 / -1" }}>Aucun compte.</div>}
+            {list.length === 0 && <div className="placeholder" style={{ gridColumn: "1 / -1" }}>No accounts.</div>}
           </div>
         </div>
 
         {/* 2 — destination */}
         <div className="step">
-          <div className="step-h"><span className={"step-n" + (det.kind !== "none" ? " done" : "")}>{det.kind !== "none" ? <IconCheck /> : "2"}</span>Où ?</div>
+          <div className="step-h"><span className={"step-n" + (det.kind !== "none" ? " done" : "")}>{det.kind !== "none" ? <IconCheck /> : "2"}</span>Where?</div>
           <div className="inline" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-            <span className="sub">Favoris</span>
+            <span className="sub">Favourites</span>
             <span className="inline">
-              <button className="btn sm" onClick={() => store.setView("serveurs")}><IconServer />Parcourir les serveurs</button>
+              <button className="btn sm" onClick={() => store.setView("serveurs")}><IconServer />Browse servers</button>
             </span>
           </div>
           <div className="fav-row">
@@ -256,10 +256,10 @@ export function JouerView() {
                 <button className="x" onClick={() => dropFav(f.target)} aria-label={`Retirer ${f.name}`}><IconX /></button>
               </span>
             ))}
-            <button className="fav" onClick={saveFav}><IconPlus />Enregistrer</button>
+            <button className="fav" onClick={saveFav}><IconPlus />Save</button>
           </div>
 
-          <span className="lbl">Lien de jeu, serveur privé, ID de place ou @pseudo</span>
+          <span className="lbl">Game link, private server, place ID or @username</span>
           <label className="field mono">
             {det.kind === "user" ? <IconUser /> : <IconSearch />}
             <input value={settings.target} onChange={(e) => store.updateSettings({ target: e.target.value })} placeholder="https://www.roblox.com/games/…" aria-label="Destination" />
@@ -270,31 +270,31 @@ export function JouerView() {
 
           {det.kind === "game" && (
             <>
-              <span className="lbl">Serveurs</span>
+              <span className="lbl">Servers</span>
               <Seg
                 value={settings.serverMode}
                 onChange={(v) => store.updateSettings({ serverMode: v })}
-                options={[{ v: "same", label: "Même" }, { v: "random", label: "Aléatoires" }, { v: "closest", label: "Plus proches" }, { v: "private", label: "Privé" }]}
+                options={[{ v: "same", label: "Same" }, { v: "random", label: "Random" }, { v: "closest", label: "Closest" }, { v: "private", label: "Private" }]}
               />
               {settings.serverMode === "private" && (
                 <label className="field mono" style={{ marginTop: 10 }}>
-                  <input value={settings.privateLink} onChange={(e) => store.updateSettings({ privateLink: e.target.value })} placeholder="Lien du serveur privé" aria-label="Lien du serveur privé" />
+                  <input value={settings.privateLink} onChange={(e) => store.updateSettings({ privateLink: e.target.value })} placeholder="Private server link" aria-label="Private server link" />
                 </label>
               )}
             </>
           )}
 
           <div className="inline" style={{ marginTop: 18, justifyContent: "space-between" }}>
-            <span className="sub">Délai de {(settings.cooldownMs / 1000).toFixed(0)} s entre deux clients</span>
+            <span className="sub">{(settings.cooldownMs / 1000).toFixed(0)} s delay between two clients</span>
             <button className="btn primary" disabled={busy || usable.length === 0} onClick={() => void launch()}>
-              <IconPlay />{busy ? "Lancement…" : `Lancer ${usable.length} compte${usable.length > 1 ? "s" : ""}`}<span className="kbd" style={{ marginLeft: 4 }}>Ctrl ↵</span>
+              <IconPlay />{busy ? "Launching…" : `Launch ${usable.length} account${usable.length !== 1 ? "s" : ""}`}<span className="kbd" style={{ marginLeft: 4 }}>Ctrl ↵</span>
             </button>
           </div>
 
           {batchIds.length > 0 && (
             <div className="batch">
-              <div className="batch-h"><span>Lot · {((Date.now() - startedAt) / 1000 | 0)} s</span>{busy && <button className="btn sm" onClick={() => void cancel()}>Annuler</button>}</div>
-              <div className="batch-n">{nIn}/{rows.length}<small>en jeu{nFail ? ` · ${nFail} échec${nFail > 1 ? "s" : ""}` : ""}</small></div>
+              <div className="batch-h"><span>Lot · {((Date.now() - startedAt) / 1000 | 0)} s</span>{busy && <button className="btn sm" onClick={() => void cancel()}>Cancel</button>}</div>
+              <div className="batch-n">{nIn}/{rows.length}<small>in game{nFail ? ` · ${nFail} failure${nFail !== 1 ? "s" : ""}` : ""}</small></div>
               <div className="prog"><i style={{ width: (rows.length ? (nIn / rows.length) * 100 : 0) + "%" }} /></div>
               <div className="stage-h">{STAGES.map((s) => <span key={s}>{s}</span>)}</div>
               {rows.map((r) => (

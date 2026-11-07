@@ -34,7 +34,7 @@ pub struct Settings {
     // --- récupération -------------------------------------------------------
     /// Relance un client qui a crashé ou qui est figé.
     pub auto_restart: bool,
-    /// Abandon d'un compte après N essais en M minutes.
+    /// Abandon d'un compte après N tries in M minutes.
     pub give_up_tries: u32,
     pub give_up_minutes: u32,
     /// Temps laissé à un client pour se fermer seul avant d'être arrêté de force (s).
@@ -53,11 +53,11 @@ pub struct Settings {
     pub summary_every_min: u32,
 
     // --- performances (moteur côté Rust) ------------------------------------
-    /// Baisse la priorité des clients qui ne sont pas au premier plan.
+    /// Lowers the priority of clients that are not in the foreground.
     pub adaptive_limits: bool,
     /// Répartit les clients sur les cœurs du processeur.
     pub spread_cores: bool,
-    /// Décharge régulièrement la mémoire des clients sur le disque.
+    /// Regularly pages clients' memory out to disk.
     pub trim_memory: bool,
     pub trim_every_min: u32,
     /// Bride (priorité basse) un client au-delà de cette mémoire (Mo).

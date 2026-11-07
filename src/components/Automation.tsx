@@ -34,7 +34,7 @@ export function Automation() {
         if (!first) {
           const recentLaunch = (id: string) => loadEvents().some((e) => e.accountId === id && e.kind === "launch" && Date.now() - e.t < 90_000);
           cur.forEach((id, pid) => {
-            if (!prev.has(pid) && Date.now() - (lastEnd.get(id) ?? 0) < 120_000 && !recentLaunch(id)) logEvent({ accountId: id, kind: "restart", note: "relance automatique" });
+            if (!prev.has(pid) && Date.now() - (lastEnd.get(id) ?? 0) < 120_000 && !recentLaunch(id)) logEvent({ accountId: id, kind: "restart", note: "automatic relaunch" });
           });
         }
         prev.clear();
@@ -62,12 +62,12 @@ export function Automation() {
         try {
           if (sc.action === "start") {
             const r = await runProfile(p, accRef.current);
-            r.launched.forEach((id) => { storeRef.current.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: `${p.name} (planifié)` }); });
-            storeRef.current.toast(`Planifié : « ${p.name} » lancé (${r.launched.length} client${r.launched.length > 1 ? "s" : ""}).`);
+            r.launched.forEach((id) => { storeRef.current.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: `${p.name} (scheduled)` }); });
+            storeRef.current.toast(`Scheduled: “${p.name}” launched (${r.launched.length} client${r.launched.length !== 1 ? "s" : ""}).`);
           } else {
             const n = await api.stopAccounts(p.accountIds);
             p.accountIds.forEach((id) => storeRef.current.patch(id, { running: false, presence: "Offline" }));
-            storeRef.current.toast(`Planifié : « ${p.name} » arrêté (${n} client${n > 1 ? "s" : ""}).`);
+            storeRef.current.toast(`Scheduled: “${p.name}” stopped (${n} client${n !== 1 ? "s" : ""}).`);
           }
         } catch (e) { storeRef.current.toast(String(e)); }
       }
@@ -86,8 +86,8 @@ export function Automation() {
     const t = window.setTimeout(async () => {
       try {
         const r = await runProfile(p, accRef.current);
-        r.launched.forEach((a) => { storeRef.current.patch(a, { running: true, presence: "InGame" }); logEvent({ accountId: a, kind: "launch", note: `${p.name} (démarrage)` }); });
-        storeRef.current.toast(`Démarrage : « ${p.name} » lancé.`);
+        r.launched.forEach((a) => { storeRef.current.patch(a, { running: true, presence: "InGame" }); logEvent({ accountId: a, kind: "launch", note: `${p.name} (startup)` }); });
+        storeRef.current.toast(`Startup: “${p.name}” launched.`);
       } catch (e) { storeRef.current.toast(String(e)); }
     }, 4000);
     return () => window.clearTimeout(t);
@@ -102,7 +102,7 @@ export function Automation() {
       try { seen = localStorage.getItem("roaccount.robloxAlert") || ""; } catch { /* ignore */ }
       if (seen === v.latest) return;
       try { localStorage.setItem("roaccount.robloxAlert", v.latest); } catch { /* ignore */ }
-      storeRef.current.toast("Roblox a une nouvelle version : relance tes clients pour en profiter.");
+      storeRef.current.toast("Roblox has a new version: restart your clients to use it.");
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.robloxAlert]);

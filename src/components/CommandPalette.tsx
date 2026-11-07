@@ -35,16 +35,16 @@ export function CommandPalette({ onLock, onKillAll }: { onLock: () => void; onKi
     const out: Cmd[] = [];
     [...MAIN_NAV, ...TOOLS_NAV, ...SETTINGS_NAV].forEach((n) => {
       const settingsPage = n.id.startsWith("s-");
-      out.push({ id: "nav:" + n.id, label: (settingsPage ? "Paramètres · " : "Aller à ") + n.label, icon: n.icon, kw: `aller ${n.label} ${settingsPage ? "parametres reglages" : ""}`, run: () => store.setView(n.id) });
+      out.push({ id: "nav:" + n.id, label: (settingsPage ? "Settings · " : "Go to ") + n.label, icon: n.icon, kw: `aller ${n.label} ${settingsPage ? "parametres reglages" : ""}`, run: () => store.setView(n.id) });
     });
     (settings.profiles ?? []).forEach((p) => {
       out.push({
-        id: "prof:" + p.id, label: `Lancer le profil « ${p.name} »`, hint: `${p.accountIds.length} compte(s)`, icon: <IconPlay />, kw: `lancer profil ${p.name}`,
+        id: "prof:" + p.id, label: `Launch profile “${p.name}”`, hint: `${p.accountIds.length} account(s)`, icon: <IconPlay />, kw: `launch profile ${p.name}`,
         run: async () => {
           try {
             const r = await runProfile(p, accounts);
             r.launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: p.name }); });
-            store.toast(r.launched.length ? `Profil « ${p.name} » : ${r.launched.length} client(s) lancé(s).` : "Aucun compte du profil n'est disponible.");
+            store.toast(r.launched.length ? `Profile “${p.name}”: ${r.launched.length} client(s) launched.` : "None of the profile's accounts are available.");
           } catch (e) { store.toast(String(e)); }
         },
       });
@@ -52,20 +52,20 @@ export function CommandPalette({ onLock, onKillAll }: { onLock: () => void; onKi
     accounts.forEach((a) => {
       const name = a.alias || a.username;
       if (launchable(a)) out.push({
-        id: "run:" + a.id, label: `Lancer ${name}`, hint: "sur la cible actuelle", icon: <IconPlay />, kw: `lancer ${name} ${a.username} ${a.display_name}`,
+        id: "run:" + a.id, label: `Launch ${name}`, hint: "on the current target", icon: <IconPlay />, kw: `launch ${name} ${a.username} ${a.display_name}`,
         run: async () => {
-          try { await api.launchAccount(a.id, settings.target); store.patch(a.id, { running: true, presence: "InGame" }); logEvent({ accountId: a.id, kind: "launch", note: settings.target }); store.toast(`${name} lancé.`); }
+          try { await api.launchAccount(a.id, settings.target); store.patch(a.id, { running: true, presence: "InGame" }); logEvent({ accountId: a.id, kind: "launch", note: settings.target }); store.toast(`${name} launched.`); }
           catch (e) { store.toast(String(e)); }
         },
       });
-      out.push({ id: "open:" + a.id, label: `Ouvrir ${name}`, hint: "fiche du compte", icon: <IconSearch />, kw: `ouvrir compte ${name} ${a.username} ${a.display_name}`, run: () => { store.setCurrent(a.id); store.setView("comptes"); } });
+      out.push({ id: "open:" + a.id, label: `Open ${name}`, hint: "account page", icon: <IconSearch />, kw: `open account ${name} ${a.username} ${a.display_name}`, run: () => { store.setCurrent(a.id); store.setView("comptes"); } });
     });
     out.push(
-      { id: "add", label: "Ajouter un compte", icon: <IconPlus />, kw: "ajouter nouveau compte", run: () => store.setAddOpen(true) },
-      { id: "refresh", label: "Actualiser les comptes", hint: "F5", icon: <IconRefresh />, kw: "actualiser rafraichir verifier", run: () => { void store.refreshAll(); store.toast("Comptes actualisés."); } },
-      { id: "theme", label: "Basculer clair / sombre", icon: <IconMoon />, kw: "theme mode clair sombre", run: () => store.updateSettings({ theme: document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light" }) },
-      { id: "lock", label: "Verrouiller le coffre", hint: "Ctrl L", icon: <IconLock />, kw: "verrouiller coffre bloquer", run: onLock },
-      { id: "kill", label: "Tout arrêter", hint: "ferme tous les clients", icon: <IconX />, kw: "arreter fermer stop tout clients", run: onKillAll },
+      { id: "add", label: "Add account", icon: <IconPlus />, kw: "add new account", run: () => store.setAddOpen(true) },
+      { id: "refresh", label: "Refresh accounts", hint: "F5", icon: <IconRefresh />, kw: "refresh reload check", run: () => { void store.refreshAll(); store.toast("Accounts refreshed."); } },
+      { id: "theme", label: "Toggle light / dark", icon: <IconMoon />, kw: "theme mode light dark", run: () => store.updateSettings({ theme: document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light" }) },
+      { id: "lock", label: "Lock the vault", hint: "Ctrl L", icon: <IconLock />, kw: "lock vault block", run: onLock },
+      { id: "kill", label: "Stop all", hint: "closes every client", icon: <IconX />, kw: "stop close kill all clients", run: onKillAll },
     );
     return out;
   }, [accounts, settings.profiles, settings.target]); // eslint-disable-line
@@ -95,14 +95,14 @@ export function CommandPalette({ onLock, onKillAll }: { onLock: () => void; onKi
 
   return (
     <div className="overlay cp-overlay" onMouseDown={close}>
-      <div className="cp" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Palette de commandes">
+      <div className="cp" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Command palette">
         <label className="cp-in">
           <IconCommand />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Tape une commande : lancer luna, moniteur, verrouiller…" aria-label="Commande" />
-          <span className="kbd">Échap</span>
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Type a command: launch luna, monitor, lock…" aria-label="Command" />
+          <span className="kbd">Esc</span>
         </label>
         <div className="cp-list" ref={listRef}>
-          {shown.length === 0 && <div className="placeholder" style={{ padding: 20 }}>Aucune commande ne correspond.</div>}
+          {shown.length === 0 && <div className="placeholder" style={{ padding: 20 }}>No matching command.</div>}
           {shown.map((c, i) => (
             <button key={c.id} className={"cp-i" + (i === sel ? " on" : "")} onMouseMove={() => setSel(i)} onClick={() => pick(c)}>
               {c.icon}<span>{c.label}</span>{c.hint && <small>{c.hint}</small>}

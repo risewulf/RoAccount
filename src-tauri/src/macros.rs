@@ -11,7 +11,7 @@ const SAMPLE: &str = r#"#Requires AutoHotkey v2.0
 ; Macro d'exemple : anti-AFK. Reçoit le PID du client Roblox (A_Args[1]).
 pid := A_Args.Length ? A_Args[1] : 0
 if !pid || !WinExist("ahk_pid " pid) {
-    MsgBox "Client Roblox introuvable."
+    MsgBox "Roblox client not found."
     ExitApp
 }
 Loop {
@@ -25,7 +25,7 @@ Loop {
 
 fn base_dir() -> Result<PathBuf> {
     let mut d = dirs::data_local_dir()
-        .ok_or_else(|| AppError::Io("dossier de données local introuvable".into()))?;
+        .ok_or_else(|| AppError::Io("local data folder not found".into()))?;
     d.push("RoAccount");
     d.push("macros");
     std::fs::create_dir_all(&d)?;
@@ -42,7 +42,7 @@ pub fn valid_name(n: &str) -> bool {
 
 fn script_path(name: &str) -> Result<PathBuf> {
     if !valid_name(name) {
-        return Err(AppError::Other("Nom de macro invalide (lettres, chiffres, espace, - et _).".into()));
+        return Err(AppError::Other("Invalid macro name (letters, digits, space, - and _).".into()));
     }
     Ok(base_dir()?.join(format!("{name}.ahk")))
 }
@@ -113,12 +113,12 @@ pub fn find_ahk(custom: &str) -> Option<PathBuf> {
 /// Lance la macro `name` une fois par PID. Renvoie le nombre d'instances démarrées.
 pub fn run(state: &AppState, name: &str, pids: &[u32], ahk_custom: &str) -> Result<usize> {
     let ahk = find_ahk(ahk_custom).ok_or_else(|| {
-        AppError::Other("AutoHotkey v2 introuvable. Installe-le (autohotkey.com) ou indique son chemin.".into())
+        AppError::Other("AutoHotkey v2 not found. Install it (autohotkey.com) or set its path.".into())
     })?;
     let code = std::fs::read_to_string(script_path(name)?)
-        .map_err(|_| AppError::Other("Macro introuvable.".into()))?;
+        .map_err(|_| AppError::Other("Macro not found.".into()))?;
     if pids.is_empty() {
-        return Err(AppError::Other("Aucun client Roblox en cours.".into()));
+        return Err(AppError::Other("No Roblox client running.".into()));
     }
 
     // AutoHotkey v2 remplace par défaut l'instance précédente d'un même script :
@@ -134,7 +134,7 @@ pub fn run(state: &AppState, name: &str, pids: &[u32], ahk_custom: &str) -> Resu
                 state.macros.lock().unwrap().push(MacroProc { name: name.to_string(), pid: *pid, child });
                 started += 1;
             }
-            Err(e) => return Err(AppError::Other(format!("lancement d'AutoHotkey impossible : {e}"))),
+            Err(e) => return Err(AppError::Other(format!("couldn't start AutoHotkey: {e}"))),
         }
     }
     Ok(started)
@@ -147,7 +147,7 @@ pub fn running(state: &AppState) -> Vec<RunningMacro> {
     v.iter().map(|m| RunningMacro { name: m.name.clone(), pid: m.pid }).collect()
 }
 
-/// Arrête toutes les macros (ou seulement celle nommée).
+/// Arrête every macros (ou seulement celle nommée).
 pub fn stop(state: &AppState, name: Option<&str>) -> usize {
     let mut v = state.macros.lock().unwrap();
     let mut n = 0;

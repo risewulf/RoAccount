@@ -2,7 +2,7 @@
 //!
 //! Lecture directe de la table des processus (crate `sysinfo`) : aucun
 //! sous-processus n'est lancé (avant : `tasklist`, qui faisait clignoter une
-//! fenêtre cmd toutes les quelques secondes).
+//! fenêtre cmd every quelques secondes).
 
 use crate::models::ProcInfo;
 

@@ -31,58 +31,58 @@ export function LancementSettings() {
   const outdated = !!(ver?.installed && ver?.latest && ver.installed !== ver.latest);
 
   return (
-    <SettingsPage title="Lancement">
+    <SettingsPage title="Launch">
       <Group>
-        <Row title="Multi-instance" desc="Un client par compte, côte à côte. Pris en compte au prochain démarrage de RoAccount." explain="RoAccount garde le verrou de Roblox (ROBLOX_singletonEvent) ouvert avant le premier client. Il faut donc fermer tous les clients Roblox avant de démarrer RoAccount.">
+        <Row title="Multi-instance" desc="One client per account, side by side. Applied the next time RoAccount starts." explain="RoAccount holds Roblox's lock (ROBLOX_singletonEvent) open before the first client. So close every Roblox client before starting RoAccount.">
           <Toggle on={s.multiInstance} label="Multi-instance" onChange={(v) => set({ multiInstance: v })} />
         </Row>
-        <Row title="Délai de lancement" desc="Le temps entre deux clients d'un lot. Plus long, c'est plus doux pour le PC.">
+        <Row title="Launch delay" desc="The time between two clients in a batch. Longer is gentler on the PC.">
           <NumInput value={Math.round(s.cooldownMs / 1000)} onChange={(n) => set({ cooldownMs: n * 1000 })} min={0} max={120} width={80} /><span className="sub">s</span>
         </Row>
-        <Row title="Arguments de lancement" desc="Mots ajoutés après chaque lien de lancement." explain="Lettres, chiffres et + : . _ - uniquement. Laisse vide si tu ne sais pas à quoi ça sert.">
-          <input className="txt mono" style={{ width: 230 }} value={s.launchArgs} onChange={(e) => set({ launchArgs: e.target.value })} placeholder="aucun" aria-label="Arguments de lancement" />
+        <Row title="Launch arguments" desc="Words added after each launch link." explain="Letters, digits and + : . _ - only. Leave empty if you don't know what it's for.">
+          <input className="txt mono" style={{ width: 230 }} value={s.launchArgs} onChange={(e) => set({ launchArgs: e.target.value })} placeholder="none" aria-label="Launch arguments" />
         </Row>
-        <Row title="Exclure MAIN de Tout sélectionner" desc="Le compte MAIN reste hors des sélections et des lots, sauf si tu le choisis toi-même.">
-          <Toggle on={s.excludeMainFromAll} label="Exclure MAIN" onChange={(v) => set({ excludeMainFromAll: v })} />
+        <Row title="Exclude MAIN from Select all" desc="The MAIN account stays out of selections and batches, unless you pick it yourself.">
+          <Toggle on={s.excludeMainFromAll} label="Exclude MAIN" onChange={(v) => set({ excludeMainFromAll: v })} />
         </Row>
       </Group>
 
-      <Group title="Récupération">
-        <Row title="Reconnexion auto" desc="Relance vers la même cible un client que Roblox déconnecte (expulsion, serveur fermé, connexion perdue).">
-          <Toggle on={s.autoRejoin} label="Reconnexion auto" onChange={(v) => set({ autoRejoin: v })} />
+      <Group title="Recovery">
+        <Row title="Auto-rejoin" desc="Relaunches to the same target a client that Roblox disconnects (kick, server closed, connection lost).">
+          <Toggle on={s.autoRejoin} label="Auto-rejoin" onChange={(v) => set({ autoRejoin: v })} />
         </Row>
-        <Row title="Redémarrage auto après un crash" desc="Relance un client qui crashe ou se fige.">
-          <Toggle on={s.autoRestart} label="Redémarrage auto" onChange={(v) => set({ autoRestart: v })} />
+        <Row title="Auto-restart after a crash" desc="Relaunches a client that crashes or freezes.">
+          <Toggle on={s.autoRestart} label="Auto-restart" onChange={(v) => set({ autoRestart: v })} />
         </Row>
-        <Row title="Abandonner après" desc="RoAccount cesse de relancer un compte qui échoue trop souvent.">
-          <NumInput value={s.giveUpTries} onChange={(n) => set({ giveUpTries: n })} min={1} max={20} width={70} /><span className="sub">essais en</span>
+        <Row title="Give up after" desc="RoAccount stops relaunching an account that fails too often.">
+          <NumInput value={s.giveUpTries} onChange={(n) => set({ giveUpTries: n })} min={1} max={20} width={70} /><span className="sub">tries in</span>
           <NumInput value={s.giveUpMinutes} onChange={(n) => set({ giveUpMinutes: n })} min={1} max={240} width={70} /><span className="sub">min</span>
         </Row>
-        <Row title="Anti-AFK" desc="Évite que les clients inactifs soient expulsés." explain="Utilise une macro AutoHotkey v2 intégrée (anti-afk) lancée sur chaque client. AutoHotkey v2 doit être installé.">
+        <Row title="Anti-AFK" desc="Keeps idle clients from being kicked." explain="Uses a built-in AutoHotkey v2 macro (anti-AFK) run on each client. AutoHotkey v2 must be installed.">
           <Toggle on={s.antiAfk} label="Anti-AFK" onChange={(v) => set({ antiAfk: v })} />
         </Row>
       </Group>
 
-      <Group title="Démarrage">
-        <Row title="Lancer RoAccount avec Windows" desc="L'appli démarre toute seule à l'ouverture de session." explain="Écrit une entrée dans le démarrage de ton compte Windows (clé Run de l'utilisateur, sans droits administrateur). Désactive l'interrupteur pour la retirer. Le coffre reste verrouillé : il faut ton mot de passe maître.">
-          <Toggle on={s.startWithWindows} label="Lancer avec Windows" onChange={(v) => { set({ startWithWindows: v }); void api.setAutostart(v, s.startMinimized).catch((e) => { store.toast(String(e)); set({ startWithWindows: !v }); }); }} />
+      <Group title="Startup">
+        <Row title="Start RoAccount with Windows" desc="The app starts by itself when you sign in." explain="Writes an entry to your Windows account startup (the user's Run key, no administrator rights). Turn the switch off to remove it. The vault stays locked: your master password is needed.">
+          <Toggle on={s.startWithWindows} label="Start with Windows" onChange={(v) => { set({ startWithWindows: v }); void api.setAutostart(v, s.startMinimized).catch((e) => { store.toast(String(e)); set({ startWithWindows: !v }); }); }} />
         </Row>
-        <Row title="Démarrer réduit" desc="Au démarrage de Windows, RoAccount reste dans la zone de notification." explain="Ouvre-le ensuite depuis l'icône de la zone de notification.">
-          <Toggle on={s.startMinimized} label="Démarrer réduit" onChange={(v) => { set({ startMinimized: v }); if (s.startWithWindows) void api.setAutostart(true, v).catch((e) => store.toast(String(e))); }} />
+        <Row title="Start minimized" desc="At Windows startup, RoAccount stays in the notification area." explain="Then open it from the notification area icon.">
+          <Toggle on={s.startMinimized} label="Start minimized" onChange={(v) => { set({ startMinimized: v }); if (s.startWithWindows) void api.setAutostart(true, v).catch((e) => store.toast(String(e))); }} />
         </Row>
-        <Row title="Profil lancé au démarrage" desc="Lance automatiquement un profil quelques secondes après l'ouverture de RoAccount." explain="Les profils se créent dans Jouer. Le coffre doit être déverrouillé pour que le lancement ait lieu.">
-          <select className="sort-select" value={s.autoLaunchProfile} onChange={(e) => set({ autoLaunchProfile: e.target.value })} aria-label="Profil au démarrage">
-            <option value="">Aucun</option>
+        <Row title="Profile launched at startup" desc="Automatically launches a profile a few seconds after RoAccount opens." explain="Profiles are created in Play. The vault must be unlocked for the launch to happen.">
+          <select className="sort-select" value={s.autoLaunchProfile} onChange={(e) => set({ autoLaunchProfile: e.target.value })} aria-label="Startup profile">
+            <option value="">None</option>
             {(s.profiles ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </Row>
-        <Row title="Alerte nouvelle version de Roblox" desc="Un message quand Roblox sort une version plus récente que celle de tes clients.">
-          <Toggle on={s.robloxAlert} label="Alerte version Roblox" onChange={(v) => set({ robloxAlert: v })} />
+        <Row title="New Roblox version alert" desc="A message when Roblox ships a newer version than your clients'.">
+          <Toggle on={s.robloxAlert} label="Roblox version alert" onChange={(v) => set({ robloxAlert: v })} />
         </Row>
       </Group>
 
-      <Group title="Arrêt">
-        <Row title="Raccourci d'urgence" desc="Arrête tous les clients, depuis n'importe quelle appli.">
+      <Group title="Stop">
+        <Row title="Emergency shortcut" desc="Stops all clients, from any app.">
           {s.emergencyHotkey && <span className="kbd">{s.emergencyHotkey.replace("CommandOrControl", "Ctrl")}</span>}
           <button
             className={"btn" + (capturing ? " on" : "")}
@@ -95,37 +95,37 @@ export function LancementSettings() {
               if (c) { set({ emergencyHotkey: c }); setCapturing(false); }
             }}
             onBlur={() => setCapturing(false)}
-          >{capturing ? "Appuie sur les touches…" : s.emergencyHotkey ? "Changer" : "Définir"}</button>
-          {s.emergencyHotkey && <button className="btn" onClick={() => set({ emergencyHotkey: "" })}>Retirer</button>}
+          >{capturing ? "Press the keys…" : s.emergencyHotkey ? "Changer" : "Set"}</button>
+          {s.emergencyHotkey && <button className="btn" onClick={() => set({ emergencyHotkey: "" })}>Remove</button>}
         </Row>
-        <Row title="Délai de fermeture" desc="Le temps laissé à un client que RoAccount ferme pour se fermer tout seul avant d'être arrêté de force.">
+        <Row title="Close delay" desc="The time a client that RoAccount closes gets to close by itself before being force-stopped.">
           <NumInput value={s.closeDelaySecs} onChange={(n) => set({ closeDelaySecs: n })} min={0} max={60} width={70} /><span className="sub">s</span>
         </Row>
-        <Row title="Éteindre le PC" desc="Le minuteur de Windows. Il ferme toutes les applis.">
-          <button className="btn" onClick={() => setShut(true)}>Programmer…</button>
+        <Row title="Shut down the PC" desc="The Windows timer. It closes every app.">
+          <button className="btn" onClick={() => setShut(true)}>Schedule…</button>
         </Row>
       </Group>
 
-      <Group title="Client Roblox">
+      <Group title="Roblox client">
         <Row
-          title="Version installée"
-          badge={ver && <span className={"ok-pill " + (outdated ? "warn" : "")} style={{ marginLeft: 8 }}><i />{outdated ? "obsolète" : "à jour"}</span>}
-          desc={ver ? (outdated ? `${ver.installed} · ${ver.latest} est sortie` : ver.installed ?? "Roblox n'est pas installé") : "Vérification…"}
+          title="Installed version"
+          badge={ver && <span className={"ok-pill " + (outdated ? "warn" : "")} style={{ marginLeft: 8 }}><i />{outdated ? "outdated" : "up to date"}</span>}
+          desc={ver ? (outdated ? `${ver.installed} · ${ver.latest} is out` : ver.installed ?? "Roblox is not installed") : "Checking…"}
           mono
         >
-          <button className="btn" onClick={() => void api.openUrl("https://www.roblox.com/download").catch((e) => store.toast(String(e)))}>Mettre à jour Roblox</button>
+          <button className="btn" onClick={() => void api.openUrl("https://www.roblox.com/download").catch((e) => store.toast(String(e)))}>Update Roblox</button>
         </Row>
       </Group>
 
       {shut && (
         <div className="overlay" onClick={() => setShut(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Éteindre le PC</h3>
-            <p>Windows éteindra le PC dans le délai choisi et fermera toutes les applications, sans demander. Enregistre ton travail avant.</p>
+            <h3>Shut down the PC</h3>
+            <p>Windows will shut the PC down after the chosen delay and close every app, without asking. Save your work first.</p>
             <div className="inline"><NumInput value={mins} onChange={setMins} min={1} max={1440} width={90} /><span className="sub">minutes</span></div>
             <div className="dialog-actions">
-              <button className="btn" onClick={() => void api.scheduleShutdown(0).then(() => { store.toast("Extinction annulée."); setShut(false); }).catch((e) => store.toast(String(e)))}>Annuler la programmation</button>
-              <button className="btn primary" onClick={() => void api.scheduleShutdown(mins).then(() => { store.toast(`Le PC s'éteindra dans ${mins} min.`); setShut(false); }).catch((e) => store.toast(String(e)))}>Programmer</button>
+              <button className="btn" onClick={() => void api.scheduleShutdown(0).then(() => { store.toast("Shutdown cancelled."); setShut(false); }).catch((e) => store.toast(String(e)))}>Cancel the schedule</button>
+              <button className="btn primary" onClick={() => void api.scheduleShutdown(mins).then(() => { store.toast(`The PC will shut down in ${mins} min.`); setShut(false); }).catch((e) => store.toast(String(e)))}>Programmer</button>
             </div>
           </div>
         </div>
@@ -145,35 +145,35 @@ export function ApparenceSettings() {
   const { settings: s } = store;
   const set = (p: Partial<Settings>) => store.updateSettings(p);
   return (
-    <SettingsPage title="Apparence">
+    <SettingsPage title="Appearance">
       <Group>
-        <Row title="Thème" desc="Système suit Windows (sombre ou clair).">
-          <Seg value={s.theme} onChange={(v) => set({ theme: v })} options={[{ v: "dark", label: "Sombre" }, { v: "light", label: "Clair" }, { v: "system", label: "Système" }]} />
+        <Row title="Theme" desc="System follows Windows (dark or light).">
+          <Seg value={s.theme} onChange={(v) => set({ theme: v })} options={[{ v: "dark", label: "Dark" }, { v: "light", label: "Light" }, { v: "system", label: "System" }]} />
         </Row>
-        <Row title="Couleur d'accent" desc="Boutons, interrupteurs et surlignages. Choisis un préréglage ou n'importe quelle couleur.">
+        <Row title="Accent colour" desc="Buttons, switches and highlights. Pick a preset or any colour.">
           <div className="accents">
             {ACCENTS.map((c) => (
               <button key={c} className={"acc-dot" + (s.accent.toLowerCase() === c ? " on" : "")} style={{ background: c }} onClick={() => set({ accent: c })} aria-label={`Accent ${c}`} />
             ))}
-            <span className="acc-add" title="Autre couleur">+<input type="color" value={/^#[0-9a-f]{6}$/i.test(s.accent) ? s.accent : "#ff2d46"} onChange={(e) => set({ accent: e.target.value })} aria-label="Couleur personnalisée" /></span>
+            <span className="acc-add" title="Other colour">+<input type="color" value={/^#[0-9a-f]{6}$/i.test(s.accent) ? s.accent : "#ff2d46"} onChange={(e) => set({ accent: e.target.value })} aria-label="Custom colour" /></span>
           </div>
         </Row>
-        <Row title="Densité" desc="Hauteur des lignes dans la liste des comptes.">
-          <Seg value={s.density} onChange={(v) => set({ density: v })} options={[{ v: "detailed", label: "Détaillée" }, { v: "compact", label: "Compacte" }]} />
+        <Row title="Density" desc="Row height in the account list.">
+          <Seg value={s.density} onChange={(v) => set({ density: v })} options={[{ v: "detailed", label: "Detailed" }, { v: "compact", label: "Compact" }]} />
         </Row>
-        <Row title="Disposition des onglets" desc="Où placer les comptes et les sections de RoAccount.">
-          <Seg value={s.tabLayout} onChange={(v) => set({ tabLayout: v })} options={[{ v: "top", label: "Comptes en haut" }, { v: "side", label: "Comptes sur le côté" }]} />
+        <Row title="Tab layout" desc="Where to place accounts and RoAccount's sections.">
+          <Seg value={s.tabLayout} onChange={(v) => set({ tabLayout: v })} options={[{ v: "top", label: "Accounts on top" }, { v: "side", label: "Accounts on the side" }]} />
         </Row>
-        <Row title="Effets sonores" desc="Sons discrets pour les clics, les interrupteurs et les notifications.">
-          <Toggle on={s.sounds} label="Effets sonores" onChange={(v) => set({ sounds: v })} />
+        <Row title="Sound effects" desc="Subtle sounds for clicks, switches and notifications.">
+          <Toggle on={s.sounds} label="Sound effects" onChange={(v) => set({ sounds: v })} />
         </Row>
-        <Row title="Animations" desc="Les transitions de l'interface. « Réduites » les raccourcit presque à zéro.">
-          <Seg value={s.animations} onChange={(v) => set({ animations: v })} options={[{ v: "on", label: "Activées" }, { v: "reduced", label: "Réduites" }, { v: "off", label: "Désactivées" }]} />
+        <Row title="Animations" desc="The interface transitions. “Reduced” shortens them to almost zero.">
+          <Seg value={s.animations} onChange={(v) => set({ animations: v })} options={[{ v: "on", label: "On" }, { v: "reduced", label: "Reduced" }, { v: "off", label: "Off" }]} />
         </Row>
       </Group>
-      <Group title="Fenêtre">
-        <Row title="Réduire dans la zone de notification" desc="Fermer la fenêtre la masque ; les clients en cours et la reconnexion auto continuent de fonctionner.">
-          <Toggle on={s.closeToTray} label="Réduire dans la zone de notification" onChange={(v) => set({ closeToTray: v })} />
+      <Group title="Window">
+        <Row title="Minimize to the notification area" desc="Closing the window hides it; running clients and auto-rejoin keep working.">
+          <Toggle on={s.closeToTray} label="Minimize to the notification area" onChange={(v) => set({ closeToTray: v })} />
         </Row>
       </Group>
     </SettingsPage>
@@ -194,26 +194,26 @@ export function SecuriteSettings() {
   const [busy, setBusy] = useState(false);
 
   async function change() {
-    if (newPw.length < 4) { setErr("Choisis un mot de passe d'au moins 4 caractères."); return; }
+    if (newPw.length < 4) { setErr("Choose a password of at least 4 characters."); return; }
     setBusy(true); setErr("");
-    try { await api.changePassword(oldPw, newPw); store.toast("Mot de passe maître changé."); setOpen(false); setOldPw(""); setNewPw(""); }
+    try { await api.changePassword(oldPw, newPw); store.toast("Master password changed."); setOpen(false); setOldPw(""); setNewPw(""); }
     catch (e) { setErr(String(e)); } finally { setBusy(false); }
   }
 
   return (
-    <SettingsPage title="Sécurité">
+    <SettingsPage title="Security">
       <Group>
-        <Row title="Chiffrement des cookies" desc="AES-256-GCM avec une clé issue de ton mot de passe maître (Argon2id). Demandé au démarrage et après le verrouillage auto." explain="Les cookies ne sont jamais écrits en clair sur le disque. Sans ton mot de passe maître, le coffre est illisible : il n'existe pas de code de récupération.">
-          <span className="ok-pill"><i />Mot de passe maître</span>
+        <Row title="Cookie encryption" desc="AES-256-GCM with a key derived from your master password (Argon2id). Asked at startup and after auto-lock." explain="Cookies are never written in clear text on disk. Without your master password the vault is unreadable: there is no recovery code.">
+          <span className="ok-pill"><i />Master password</span>
         </Row>
-        <Row title="Mot de passe maître" desc="Le changer ne fait que rechiffrer la clé ; les cookies ne sont pas rechiffrés.">
-          <button className="btn" onClick={() => setOpen(true)}>Changer…</button>
+        <Row title="Master password" desc="Changing it only re-encrypts the key; cookies are not re-encrypted.">
+          <button className="btn" onClick={() => setOpen(true)}>Change…</button>
         </Row>
-        <Row title="Verrouillage auto après inactivité" desc="Verrouille le coffre et efface la clé de la mémoire.">
+        <Row title="Auto-lock after inactivity" desc="Locks the vault and wipes the key from memory.">
           <Seg mono value={s.autoLockMin} onChange={(v) => store.updateSettings({ autoLockMin: v })}
-            options={[{ v: 0, label: "Désactivé" }, { v: 5, label: "5 min" }, { v: 15, label: "15 min" }, { v: 30, label: "30 min" }, { v: 60, label: "60 min" }]} />
+            options={[{ v: 0, label: "Off" }, { v: 5, label: "5 min" }, { v: 15, label: "15 min" }, { v: 30, label: "30 min" }, { v: 60, label: "60 min" }]} />
         </Row>
-        <Row title="Vider le presse-papiers après la copie d'un cookie" desc="0 pour ne jamais le vider.">
+        <Row title="Clear the clipboard after copying a cookie" desc="0 to never empty it.">
           <NumInput value={s.clipboardClearSecs} onChange={(n) => store.updateSettings({ clipboardClearSecs: n })} min={0} max={600} width={80} /><span className="sub">s</span>
         </Row>
       </Group>
@@ -221,12 +221,12 @@ export function SecuriteSettings() {
       {open && (
         <div className="overlay" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Changer le mot de passe maître</h3>
-            <input className="txt" type="password" placeholder="Mot de passe actuel" value={oldPw} onChange={(e) => setOldPw(e.target.value)} autoFocus style={{ marginBottom: 10 }} />
-            <input className="txt" type="password" placeholder="Nouveau mot de passe" value={newPw} onChange={(e) => setNewPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void change()} />
+            <h3>Change the master password</h3>
+            <input className="txt" type="password" placeholder="Current password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} autoFocus style={{ marginBottom: 10 }} />
+            <input className="txt" type="password" placeholder="New password" value={newPw} onChange={(e) => setNewPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void change()} />
             <div className="lock-err" style={{ marginTop: 8 }}>{err}</div>
             <div className="dialog-actions">
-              <button className="btn" onClick={() => setOpen(false)}>Annuler</button>
+              <button className="btn" onClick={() => setOpen(false)}>Cancel</button>
               <button className="btn primary" disabled={busy} onClick={() => void change()}>{busy ? "…" : "Changer"}</button>
             </div>
           </div>
@@ -247,38 +247,38 @@ export function DonneesSettings() {
   const t = (p: Promise<unknown>, ok: string) => p.then(() => store.toast(ok)).catch((e) => store.toast(String(e)));
 
   return (
-    <SettingsPage title="Données">
+    <SettingsPage title="Data">
       <Group>
-        <Row title="Dossier des données" desc="%LOCALAPPDATA%\RoAccount" mono>
-          <button className="btn" onClick={() => void api.openPath("data").catch((e) => store.toast(String(e)))}>Ouvrir</button>
-          <button className="btn" onClick={() => void api.openPath("exports").catch((e) => store.toast(String(e)))}>Ouvrir les exports</button>
+        <Row title="Data folder" desc="%LOCALAPPDATA%\RoAccount" mono>
+          <button className="btn" onClick={() => void api.openPath("data").catch((e) => store.toast(String(e)))}>Open</button>
+          <button className="btn" onClick={() => void api.openPath("exports").catch((e) => store.toast(String(e)))}>Open exports</button>
         </Row>
-        <Row title="Fichier de sauvegarde" desc="Un seul fichier chiffré par ton mot de passe maître, avec chaque compte, son cookie et ses groupes.">
-          <button className="btn" onClick={() => void api.listBackups().then(setBackups).catch((e) => store.toast(String(e)))}>Importer…</button>
-          <button className="btn" onClick={() => void api.exportBackup().then((p) => store.toast("Sauvegarde : " + p)).catch((e) => store.toast(String(e)))}>Exporter…</button>
+        <Row title="Backup file" desc="A single file encrypted by your master password, with every account, its cookie and its groups.">
+          <button className="btn" onClick={() => void api.listBackups().then(setBackups).catch((e) => store.toast(String(e)))}>Import…</button>
+          <button className="btn" onClick={() => void api.exportBackup().then((p) => store.toast("Backup: " + p)).catch((e) => store.toast(String(e)))}>Export…</button>
         </Row>
-        <Row title="Garder les infos du compte pendant" desc="Combien de temps avant que Robux, présence et jeu soient réactualisés automatiquement.">
+        <Row title="Keep account info for" desc="How long before Robux, presence and game are refreshed automatically.">
           <NumInput value={s.accountCacheMin} onChange={(n) => store.updateSettings({ accountCacheMin: n })} min={1} max={120} width={80} /><span className="sub">min</span>
         </Row>
-        <Row title="Nettoyer les logs Roblox" desc="Supprime les fichiers de logs de Roblox, qui grossissent avec plusieurs clients." explain="« Nettoyer » les supprime tout de suite ; l'interrupteur les supprime aussi à chaque démarrage de RoAccount.">
-          <button className="btn" onClick={() => void api.cleanRobloxLogs().then((n) => store.toast(`${n} fichier(s) supprimé(s).`)).catch((e) => store.toast(String(e)))}>Nettoyer</button>
-          <Toggle on={s.cleanRobloxLogs} label="Nettoyer à chaque démarrage" onChange={(v) => store.updateSettings({ cleanRobloxLogs: v })} />
+        <Row title="Clean Roblox logs" desc="Deletes Roblox's log files, which grow with several clients." explain="“Clean” deletes them right away; the switch also deletes them at every RoAccount startup.">
+          <button className="btn" onClick={() => void api.cleanRobloxLogs().then((n) => store.toast(`${n} file(s) deleted.`)).catch((e) => store.toast(String(e)))}>Clean</button>
+          <Toggle on={s.cleanRobloxLogs} label="Clean at every startup" onChange={(v) => store.updateSettings({ cleanRobloxLogs: v })} />
         </Row>
-        <Row title="Vider le cache de Roblox" desc="Supprime les téléchargements et fichiers temporaires de Roblox. Il les retélécharge au besoin." explain="Ferme tes clients avant : les fichiers qu'ils utilisent sont ignorés. Le premier lancement suivant peut être un peu plus long.">
-          <button className="btn" onClick={() => void api.cleanRobloxCache(true).then((n) => { if (window.confirm(`Libérer environ ${(n / 1048576).toFixed(0)} Mo ?`)) return api.cleanRobloxCache(false).then((f) => store.toast(`${(f / 1048576).toFixed(0)} Mo libérés.`)); }).catch((e) => store.toast(String(e)))}>Mesurer et vider</button>
+        <Row title="Empty the Roblox cache" desc="Deletes Roblox's downloads and temporary files. It re-downloads them when needed." explain="Close your clients first: files they use are skipped. The next launch may take a little longer.">
+          <button className="btn" onClick={() => void api.cleanRobloxCache(true).then((n) => { if (window.confirm(`Free about ${(n / 1048576).toFixed(0)} MB?`)) return api.cleanRobloxCache(false).then((f) => store.toast(`${(f / 1048576).toFixed(0)} MB freed.`)); }).catch((e) => store.toast(String(e)))}>Measure and empty</button>
         </Row>
       </Group>
 
       {backups && (
         <div className="overlay" onClick={() => setBackups(null)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>Importer une sauvegarde</h3>
-            <p>Choisis une sauvegarde du dossier <code>backups</code>. Elle remplace le coffre actuel.</p>
-            {backups.length === 0 && <div className="placeholder">Aucune sauvegarde trouvée. Exporte-en une d'abord.</div>}
+            <h3>Import a backup</h3>
+            <p>Choose a backup from the folder <code>backups</code>. It replaces the current vault.</p>
+            {backups.length === 0 && <div className="placeholder">No backup found. Export one first.</div>}
             {backups.map((b) => (
-              <button key={b.path} className="pop-item" onClick={() => void t(api.importBackup(b.path).then(() => store.reload()), "Sauvegarde importée.").then(() => setBackups(null))}>{b.name}</button>
+              <button key={b.path} className="pop-item" onClick={() => void t(api.importBackup(b.path).then(() => store.reload()), "Backup imported.").then(() => setBackups(null))}>{b.name}</button>
             ))}
-            <div className="dialog-actions"><button className="btn" onClick={() => setBackups(null)}>Fermer</button></div>
+            <div className="dialog-actions"><button className="btn" onClick={() => setBackups(null)}>Close</button></div>
           </div>
         </div>
       )}
@@ -287,24 +287,24 @@ export function DonneesSettings() {
 }
 
 /* ------------------------------------------------------------------ */
-/* À propos                                                             */
+/* About                                                             */
 /* ------------------------------------------------------------------ */
 
 export function AProposSettings() {
   const store = useStore();
   const open = (u: string) => void api.openUrl(u).catch((e) => store.toast(String(e)));
   return (
-    <SettingsPage title="À propos">
+    <SettingsPage title="About">
       <Group>
-        <Row title="Chercher les mises à jour de RoAccount" desc="Ouvre la page des versions : télécharge le dernier installeur si une nouvelle version est sortie.">
-          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount/releases/latest")}>Vérifier</button>
+        <Row title="Check for RoAccount updates" desc="Opens the releases page: download the latest installer if a new version is out.">
+          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount/releases/latest")}>Check</button>
         </Row>
-        <Row title={`RoAccount ${__APP_VERSION__}`} desc="Ce à quoi RoAccount se connecte, et ce qu'il modifie." explain="Il parle aux API officielles *.roblox.com, télécharge roaccount.xyz/news.json pour les actualités, et envoie vers ton webhook Discord si tu en as réglé un. Il écrit dans son dossier de données, dans ClientAppSettings.json de Roblox (réglages graphiques) et garde le verrou de multi-instance ouvert.">
-          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount/releases")}>Ouvrir la page des versions</button>
+        <Row title={`RoAccount ${__APP_VERSION__}`} desc="What RoAccount connects to, and what it changes." explain="It talks to the official *.roblox.com APIs, downloads roaccount.xyz/news.json for the news, and posts to your Discord webhook if you set one. It writes to its own data folder and to Roblox's ClientAppSettings.json (graphics settings), and keeps the multi-instance lock open.">
+          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount/releases")}>Open the releases page</button>
         </Row>
-        <Row title="Soutenir RoAccount">
-          <button className="btn" onClick={() => open("https://discord.gg/u6wWWSUz3G")}>Rejoindre notre Discord</button>
-          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount")}>Code source</button>
+        <Row title="Support RoAccount">
+          <button className="btn" onClick={() => open("https://discord.gg/u6wWWSUz3G")}>Join our Discord</button>
+          <button className="btn" onClick={() => open("https://github.com/risewulf/RoAccount")}>Source code</button>
         </Row>
       </Group>
     </SettingsPage>
@@ -316,15 +316,15 @@ export function AProposSettings() {
 /* ------------------------------------------------------------------ */
 
 const LEFT: [string, string[]][] = [
-  ["Aller à l'Accueil", ["Ctrl", "1"]], ["Aller à Comptes", ["Ctrl", "2"]], ["Aller à Jouer", ["Ctrl", "3"]],
-  ["Aller à Serveurs", ["Ctrl", "4"]], ["Aller à Paramètres", ["Ctrl", "5"]], ["Aller à Moniteur", ["Ctrl", "6"]],
-  ["Aller à Discord", ["Ctrl", "7"]], ["Aller à Debug", ["Ctrl", "8"]], ["Aller à Performances", ["Ctrl", "9"]],
+  ["Go to Home", ["Ctrl", "1"]], ["Go to Accounts", ["Ctrl", "2"]], ["Go to Play", ["Ctrl", "3"]],
+  ["Go to Servers", ["Ctrl", "4"]], ["Go to Settings", ["Ctrl", "5"]], ["Go to Monitor", ["Ctrl", "6"]],
+  ["Go to Discord", ["Ctrl", "7"]], ["Go to Debug", ["Ctrl", "8"]], ["Go to Performance", ["Ctrl", "9"]],
 ];
 const RIGHT: [string, string[]][] = [
-  ["Ajouter un compte", ["Ctrl", "N"]], ["Rechercher", ["Ctrl", "F"]], ["Tout sélectionner (affichés)", ["Ctrl", "A"]],
-  ["Vérifier la sélection, ou tout", ["Ctrl", "R"]], ["Retirer la sélection", ["Delete"]], ["Appuyer sur Jouer", ["Ctrl", "Enter"]],
-  ["Actualiser l'affichage", ["F5"]], ["Verrouiller le coffre (mot de passe maître)", ["Ctrl", "L"]],
-  ["Fermer la boîte de dialogue, vider la sélection", ["Esc"]], ["Afficher les raccourcis", ["?"]],
+  ["Add account", ["Ctrl", "N"]], ["Search", ["Ctrl", "F"]], ["Select all (shown)", ["Ctrl", "A"]],
+  ["Check the selection, or everything", ["Ctrl", "R"]], ["Remove the selection", ["Delete"]], ["Press Play", ["Ctrl", "Enter"]],
+  ["Refresh the display", ["F5"]], ["Lock the vault (master password)", ["Ctrl", "L"]],
+  ["Close the dialog, clear the selection", ["Esc"]], ["Show shortcuts", ["?"]],
 ];
 
 export function RaccourcisSettings() {
@@ -332,7 +332,7 @@ export function RaccourcisSettings() {
     <div>{rows.map(([t, k]) => (<div className="kb-row" key={t}><span>{t}</span><span className="kbs">{k.map((x) => <span key={x} className="kbd">{x}</span>)}</span></div>))}</div>
   );
   return (
-    <SettingsPage title="Raccourcis">
+    <SettingsPage title="Shortcuts">
       <div className="card"><div className="kb-grid"><R rows={LEFT} /><R rows={RIGHT} /></div></div>
     </SettingsPage>
   );

@@ -8,7 +8,7 @@ import { IconCopy, IconSearch } from "../components/icons";
 type Lv = "error" | "warn" | "info" | "debug";
 interface Line { t: number; lv: Lv; src: string; msg: string; }
 
-const LV_LABEL: Record<Lv, string> = { error: "Erreurs", warn: "Avertissements", info: "Infos", debug: "Debug" };
+const LV_LABEL: Record<Lv, string> = { error: "Errors", warn: "Warnings", info: "Info", debug: "Debug" };
 const KIND_LV: Record<string, Lv> = { crash: "error", rejoin: "warn", stop: "warn" };
 
 function stamp(t: number) {
@@ -52,19 +52,19 @@ export function DebugView() {
 
   async function diagnostic() {
     let pc = "";
-    try { const p = await api.pcInfo(); pc = `${p.os} · ${p.cpu_name} (${p.cpu_threads} threads) · RAM ${Math.round(p.ram_total_mb / 1024)} Go`; } catch { /* ignore */ }
+    try { const p = await api.pcInfo(); pc = `${p.os} · ${p.cpu_name} (${p.cpu_threads} threads) · RAM ${Math.round(p.ram_total_mb / 1024)} GB`; } catch { /* ignore */ }
     let rv = "";
-    try { const v = await api.robloxVersion(); rv = `Roblox installé : ${v.installed ?? "?"} · dernière : ${v.latest ?? "?"}`; } catch { /* ignore */ }
+    try { const v = await api.robloxVersion(); rv = `Roblox installed: ${v.installed ?? "?"} · latest: ${v.latest ?? "?"}`; } catch { /* ignore */ }
     const text = [
-      "RoAccount — diagnostic", pc, rv, `Comptes : ${store.accounts.length}`, "",
+      "RoAccount — diagnostic", pc, rv, `Accounts: ${store.accounts.length}`, "",
       ...all.slice(-120).map((l) => `[${stamp(l.t)}][${l.lv.toUpperCase()}] ${l.msg}`),
     ].filter((x) => x !== undefined).join("\n");
-    store.toast((await copyText(text)) ? "Diagnostic copié." : "Copie refusée.");
+    store.toast((await copyText(text)) ? "Diagnostics copied." : "Copy blocked.");
   }
 
   return (
     <div className="page">
-      <div className="page-head"><div><h1>Debug</h1><p>Tout ce que RoAccount consigne : erreurs, avertissements et actions effectuées.</p></div></div>
+      <div className="page-head"><div><h1>Debug</h1><p>Everything RoAccount logs: errors, warnings and actions performed.</p></div></div>
       <div className="inline" style={{ marginBottom: 14, position: "relative" }}>
         {(["error", "warn", "info", "debug"] as Lv[]).map((lv) => (
           <button key={lv} className={"chip lv-chip" + (show[lv] ? " on" : "")} onClick={() => setShow((s) => ({ ...s, [lv]: !s[lv] }))}>
@@ -73,20 +73,20 @@ export function DebugView() {
           </button>
         ))}
         <label className="field" style={{ flex: "1 1 220px", maxWidth: 420 }}>
-          <IconSearch /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer les lignes" aria-label="Filtrer les lignes" />
+          <IconSearch /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter lines" aria-label="Filter lines" />
         </label>
-        <button className="btn" onClick={() => setPaused((p) => !p)}>{paused ? "Reprendre" : "Pause"}</button>
-        <button className="btn" onClick={() => void diagnostic()}><IconCopy />Copier le diagnostic</button>
-        <button className="icon-btn" aria-label="Plus" onClick={() => setMenu((m) => !m)}>⋯</button>
+        <button className="btn" onClick={() => setPaused((p) => !p)}>{paused ? "Resume" : "Pause"}</button>
+        <button className="btn" onClick={() => void diagnostic()}><IconCopy />Copy diagnostics</button>
+        <button className="icon-btn" aria-label="More" onClick={() => setMenu((m) => !m)}>⋯</button>
         {menu && (
           <div className="popover right" style={{ top: 44 }}>
-            <button className="pop-item" onClick={() => { void api.clearLog(); clearDebug(); setBack([]); setMenu(false); }}>Vider le journal</button>
-            <button className="pop-item" onClick={() => { void api.openPath("data").catch((e) => store.toast(String(e))); setMenu(false); }}>Ouvrir le dossier de données</button>
+            <button className="pop-item" onClick={() => { void api.clearLog(); clearDebug(); setBack([]); setMenu(false); }}>Clear the log</button>
+            <button className="pop-item" onClick={() => { void api.openPath("data").catch((e) => store.toast(String(e))); setMenu(false); }}>Open the data folder</button>
           </div>
         )}
       </div>
       <div className="log-box" ref={box}>
-        {shown.length === 0 && <div className="lv-debug">Aucune ligne.</div>}
+        {shown.length === 0 && <div className="lv-debug">No lines.</div>}
         {shown.map((l, i) => (
           <div key={i} className={"lv-" + l.lv}>{`[${stamp(l.t)}][${l.src}][${l.lv.toUpperCase()}] ${l.msg}`}</div>
         ))}

@@ -31,9 +31,9 @@ pub fn capture_pid(pid: u32) -> Result<String> {
 
     if seen {
         Err(AppError::Other(
-            "Fenêtre minimisée — restaure-la pour la capturer.".into(),
+            "Window minimized — restore it to capture it.".into(),
         ))
     } else {
-        Err(AppError::Other("Aucune fenêtre trouvée pour ce client.".into()))
+        Err(AppError::Other("No window found for this client.".into()))
     }
 }

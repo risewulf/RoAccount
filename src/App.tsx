@@ -28,8 +28,8 @@ import { DEFAULT_SETTINGS, type Settings, type VaultStatus, type ViewId } from "
 installDebugLog();
 
 const ANTI_AFK = `#Requires AutoHotkey v2.0
-; Anti-AFK RoAccount : envoie la touche Espace au client toutes les 4 minutes.
-; Reçoit le PID du client Roblox dans A_Args[1].
+; RoAccount anti-AFK: sends the Space key to the client every 4 minutes.
+; Receives the Roblox client PID in A_Args[1].
 pid := A_Args[1]
 Loop {
     Sleep 240000
@@ -66,7 +66,7 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
       if (mod && e.key.toLowerCase() === "f") { e.preventDefault(); window.dispatchEvent(new Event("roa-search")); return; }
       if (mod && e.key.toLowerCase() === "l") { e.preventDefault(); onLock(); return; }
       if (mod && e.key === "Enter") { e.preventDefault(); window.dispatchEvent(new Event("roa-play")); return; }
-      if (e.key === "F5") { e.preventDefault(); void store.refreshAll(); store.toast("Comptes actualisés."); return; }
+      if (e.key === "F5") { e.preventDefault(); void store.refreshAll(); store.toast("Accounts refreshed."); return; }
       if (typing) return;
       if (mod && e.key.toLowerCase() === "a") { e.preventDefault(); window.dispatchEvent(new Event("roa-selectall")); return; }
       if (mod && e.key.toLowerCase() === "r") { e.preventDefault(); window.dispatchEvent(new Event("roa-verify")); return; }
@@ -92,7 +92,7 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
 
   // raccourci d'urgence global
   useEffect(() => {
-    void api.setGlobalHotkey(settings.emergencyHotkey || null, onKillAll).catch((e) => store.toast("Raccourci d'urgence : " + String(e)));
+    void api.setGlobalHotkey(settings.emergencyHotkey || null, onKillAll).catch((e) => store.toast("Emergency shortcut: " + String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.emergencyHotkey]);
 
@@ -103,7 +103,7 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
     const run = async () => {
       try {
         if (!(await api.ahkStatus())) {
-          if (!warned.current) { warned.current = true; store.toast("Anti-AFK : installe AutoHotkey v2 (autohotkey.com)."); }
+          if (!warned.current) { warned.current = true; store.toast("Anti-AFK: install AutoHotkey v2 (autohotkey.com)."); }
           return;
         }
         const macros = await api.listMacros();
@@ -180,7 +180,7 @@ function Shell({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => voi
       {store.addOpen && (
         <AddAccountDialog
           onClose={() => store.setAddOpen(false)}
-          onAdded={(meta) => { store.addAccount(meta); store.setCurrent(meta.id); store.setView("comptes"); store.toast(`Compte ${meta.username} ajouté.`); }}
+          onAdded={(meta) => { store.addAccount(meta); store.setCurrent(meta.id); store.setView("comptes"); store.toast(`Account ${meta.username} added.`); }}
         />
       )}
     </div>
@@ -205,7 +205,7 @@ export default function App() {
   }, []);
 
   const killAll = useCallback(async () => {
-    try { await api.killAll(); showToast("Tous les clients arrêtés."); } catch (e) { showToast(String(e)); }
+    try { await api.killAll(); showToast("All clients stopped."); } catch (e) { showToast(String(e)); }
   }, [showToast]);
 
   const lock = useCallback(async () => {

@@ -48,9 +48,9 @@ export function ServeursView() {
   }
 
   async function send() {
-    if (!picked) { store.toast("Choisis d'abord un serveur."); return; }
+    if (!picked) { store.toast("Pick a server first."); return; }
     const ids = [...senders];
-    if (!ids.length) { store.toast("Choisis d'abord un compte."); return; }
+    if (!ids.length) { store.toast("Pick an account first."); return; }
     setBusy(true);
     try {
       for (const id of ids) {
@@ -58,7 +58,7 @@ export function ServeursView() {
         store.patch(id, { running: true, presence: "InGame" });
         await new Promise((r) => setTimeout(r, Math.min(settings.cooldownMs, 3000)));
       }
-      store.toast(`${ids.length} compte(s) envoyé(s) dans le serveur.`);
+      store.toast(`${ids.length} account(s) sent to the server.`);
     } catch (e) { store.toast(String(e)); } finally { setBusy(false); }
   }
 
@@ -74,33 +74,33 @@ export function ServeursView() {
   return (
     <div className="page">
       <div className="srv-top">
-        <h1>Serveurs</h1>
+        <h1>Servers</h1>
         <div className="inline" style={{ flex: "0 1 520px", flexWrap: "nowrap" }}>
           <label className="field mono" style={{ flex: 1 }}>
-            <input value={target} onChange={(e) => setTarget(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void load()} placeholder="Lien du jeu ou Place ID" aria-label="Lien du jeu ou Place ID" />
+            <input value={target} onChange={(e) => setTarget(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void load()} placeholder="Game link or Place ID" aria-label="Game link or Place ID" />
           </label>
-          <button className="btn solid" disabled={busy} onClick={() => void load()}>Charger</button>
+          <button className="btn solid" disabled={busy} onClick={() => void load()}>Load</button>
         </div>
       </div>
 
       <div className="srv-bar">
         <div className="seg">
-          <button className={tab === "public" ? "on" : ""} onClick={() => setTab("public")}>Publics</button>
-          <button className={tab === "private" ? "on" : ""} onClick={() => setTab("private")}>Privés</button>
+          <button className={tab === "public" ? "on" : ""} onClick={() => setTab("public")}>Public</button>
+          <button className={tab === "private" ? "on" : ""} onClick={() => setTab("private")}>Private</button>
         </div>
         {tab === "public" && (
           <>
             <div className="seg">
-              <button className={sort === "ping" ? "on" : ""} onClick={() => setSort("ping")}>Meilleur ping</button>
-              <button className={sort === "full" ? "on" : ""} onClick={() => setSort("full")}>Plus pleins</button>
-              <button className={sort === "empty" ? "on" : ""} onClick={() => setSort("empty")}>Plus vides</button>
+              <button className={sort === "ping" ? "on" : ""} onClick={() => setSort("ping")}>Best ping</button>
+              <button className={sort === "full" ? "on" : ""} onClick={() => setSort("full")}>Fullest</button>
+              <button className={sort === "empty" ? "on" : ""} onClick={() => setSort("empty")}>Emptiest</button>
             </div>
             <span className="inline" style={{ gap: 10 }}>
-              <Toggle on={hideFull} label="Masquer les pleins" onChange={setHideFull} /><span style={{ fontWeight: 600 }}>Masquer les pleins</span>
+              <Toggle on={hideFull} label="Hide full servers" onChange={setHideFull} /><span style={{ fontWeight: 600 }}>Hide full servers</span>
             </span>
             <span style={{ flex: 1 }} />
-            {ago !== null && <span className="sub">Actualisé il y a {ago} s</span>}
-            <button className="btn" disabled={busy} onClick={() => void load()}><IconRefresh />Actualiser</button>
+            {ago !== null && <span className="sub">Refreshed {ago} s ago</span>}
+            <button className="btn" disabled={busy} onClick={() => void load()}><IconRefresh />Refresh</button>
           </>
         )}
       </div>
@@ -113,13 +113,13 @@ export function ServeursView() {
             {servers === null ? (
               <div className="empty-state" style={{ minHeight: 280 }}>
                 <IconSend />
-                <div>Colle un lien de jeu ou un Place ID pour voir ses serveurs.</div>
+                <div>Paste a game link or a Place ID to see its servers.</div>
               </div>
             ) : list.length === 0 ? (
-              <div className="placeholder">Aucun serveur public trouvé pour cette cible.</div>
+              <div className="placeholder">No public server found for this target.</div>
             ) : (
               <>
-                <div className="srv-row h"><span /><span>ID du serveur</span><span>Joueurs</span><span>Amis</span><span>Ping</span><span>FPS</span><span /></div>
+                <div className="srv-row h"><span /><span>Server ID</span><span>Players</span><span>Friends</span><span>Ping</span><span>FPS</span><span /></div>
                 {list.map((s) => {
                   const pc = s.max_players ? Math.round((s.playing / s.max_players) * 100) : 0;
                   return (
@@ -132,8 +132,8 @@ export function ServeursView() {
                       </span>
                       <span style={{ color: "var(--faint)" }}>—</span>
                       <span style={{ fontWeight: 600, color: s.ping == null ? "var(--muted)" : s.ping < 80 ? "var(--ok)" : s.ping < 140 ? "var(--warn)" : "var(--crit)" }}>{s.ping == null ? "—" : s.ping + " ms"}</span>
-                      <span>{s.fps == null ? "—" : s.fps.toFixed(1).replace(".", ",")}</span>
-                      <button className="icon-btn" aria-label="Copier l'ID" onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(s.id).then(() => store.toast("ID copié.")).catch(() => {}); }}><IconCopy /></button>
+                      <span>{s.fps == null ? "—" : s.fps.toFixed(1)}</span>
+                      <button className="icon-btn" aria-label="Copy ID" onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(s.id).then(() => store.toast("ID copied.")).catch(() => {}); }}><IconCopy /></button>
                     </div>
                   );
                 })}
@@ -144,24 +144,24 @@ export function ServeursView() {
           <div className="send-bar">
             <div>
               <div className="inline" style={{ marginBottom: 10, gap: 8 }}>
-                <span className={"radio" + (picked ? " on" : "")} /><b>{picked ? `Serveur ${picked.slice(0, 8)}…` : "Aucun serveur choisi"}</b>
+                <span className={"radio" + (picked ? " on" : "")} /><b>{picked ? `Server ${picked.slice(0, 8)}…` : "No server picked"}</b>
                 {place && <span className="sub">· place {place}</span>}
               </div>
               <div className="who">
                 {usable.map((a) => (
                   <button key={a.id} className={"who-chip" + (senders.has(a.id) ? " on" : "")} onClick={() => toggleSender(a.id)}>
                     <i className="c" style={{ background: a.color || "var(--brand)" }} />{a.alias || a.username}
-                    {(a.presence === "InGame" || a.running) && <small>· déjà en jeu</small>}
+                    {(a.presence === "InGame" || a.running) && <small>· already in game</small>}
                   </button>
                 ))}
-                {usable.length === 0 && <span className="sub">Aucun compte disponible.</span>}
+                {usable.length === 0 && <span className="sub">No account available.</span>}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
               <button className="btn primary" disabled={busy || !picked || senders.size === 0} onClick={() => void send()}>
-                <IconSend />{!senders.size ? "Choisis d'abord un compte" : `Envoyer ${senders.size} compte${senders.size > 1 ? "s" : ""}`}<span className="kbd" style={{ marginLeft: 4 }}>Ctrl ↵</span>
+                <IconSend />{!senders.size ? "Pick an account first" : `Send ${senders.size} account${senders.size !== 1 ? "s" : ""}`}<span className="kbd" style={{ marginLeft: 4 }}>Ctrl ↵</span>
               </button>
-              {!picked && <div className="sub" style={{ marginTop: 6 }}>Choisis d'abord un serveur</div>}
+              {!picked && <div className="sub" style={{ marginTop: 6 }}>Pick a server first</div>}
             </div>
           </div>
         </>
