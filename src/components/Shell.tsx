@@ -14,6 +14,7 @@ import {
 interface NavDef { id: ViewId; label: string; icon: ReactNode; }
 
 export const MAIN_NAV: NavDef[] = [
+  { id: "launcher", label: "Launcher", icon: <IconRocket /> },
   { id: "accueil", label: "Home", icon: <IconHome /> },
   { id: "jouer", label: "Play", icon: <IconPlay /> },
   { id: "comptes", label: "Accounts", icon: <IconUser /> },

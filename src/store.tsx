@@ -41,7 +41,7 @@ function loadSettings(): Settings {
 }
 
 export function StoreProvider({ onToast, children }: { onToast: (m: string) => void; children: ReactNode }) {
-  const [view, setView] = useState<ViewId>("accueil");
+  const [view, setView] = useState<ViewId>("launcher");
   const [current, setCurrent] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [accounts, setAccounts] = useState<AccountMeta[]>([]);

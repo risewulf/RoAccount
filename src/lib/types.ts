@@ -322,7 +322,7 @@ export interface Metrics {
 export interface RobloxVersion { installed: string | null; latest: string | null; }
 
 export type ViewId =
-  | "accueil" | "jouer" | "comptes" | "perf"
+  | "launcher" | "accueil" | "jouer" | "comptes" | "perf"
   | "serveurs" | "moniteur" | "historique" | "discord" | "debug" | "macros" | "outils"
   | "s-lancement" | "s-apparence" | "s-securite" | "s-donnees" | "s-roblox" | "s-apropos" | "s-raccourcis";
 

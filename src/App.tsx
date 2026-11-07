@@ -26,6 +26,7 @@ import { installDebugLog } from "./lib/debuglog";
 import { DEFAULT_SETTINGS, type Settings, type VaultStatus } from "./lib/types";
 import { bindingsOf, comboFromEvent } from "./lib/shortcuts";
 import { Onboarding } from "./components/Onboarding";
+import { LauncherView } from "./views/LauncherView";
 
 installDebugLog();
 
@@ -137,6 +138,7 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
 function Pages() {
   const { view } = useStore();
   switch (view) {
+    case "launcher": return <LauncherView />;
     case "accueil": return <AccueilView />;
     case "jouer": return <JouerView />;
     case "comptes": return <AccountsView />;

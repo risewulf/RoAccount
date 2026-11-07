@@ -10,6 +10,7 @@ export interface ShortcutAction {
 }
 
 export const SHORTCUT_ACTIONS: ShortcutAction[] = [
+  { id: "go:launcher", label: "Go to Launcher", def: "Ctrl+0", typing: true, view: "launcher" },
   { id: "go:accueil", label: "Go to Home", def: "Ctrl+1", typing: true, view: "accueil" },
   { id: "go:comptes", label: "Go to Accounts", def: "Ctrl+2", typing: true, view: "comptes" },
   { id: "go:jouer", label: "Go to Play", def: "Ctrl+3", typing: true, view: "jouer" },
