@@ -6,7 +6,7 @@ import { tick } from "../lib/ui";
 import { BrandMark } from "./Brand";
 import { Avatar } from "./Avatar";
 import {
-  IconBell, IconChevDown, IconCode, IconDatabase, IconDiscord, IconGauge, IconGear, IconGrid, IconHome, IconInfo,
+  IconBell, IconChevDown, IconClock, IconCode, IconDatabase, IconDiscord, IconGauge, IconGear, IconGrid, IconHome, IconInfo,
   IconKeyboard, IconLock, IconMax, IconMin, IconMoon, IconPalette, IconPlay, IconPulse, IconRefresh, IconRocket,
   IconServer, IconShield, IconShrink, IconSidebar, IconSun, IconTerminal, IconTool, IconUser, IconX,
 } from "./icons";
@@ -22,6 +22,7 @@ export const MAIN_NAV: NavDef[] = [
 export const TOOLS_NAV: NavDef[] = [
   { id: "serveurs", label: "Serveurs", icon: <IconServer /> },
   { id: "moniteur", label: "Moniteur", icon: <IconPulse /> },
+  { id: "historique", label: "Historique", icon: <IconClock /> },
   { id: "discord", label: "Discord", icon: <IconBell /> },
   { id: "debug", label: "Debug", icon: <IconTerminal /> },
   { id: "macros", label: "Macros", icon: <IconCode /> },

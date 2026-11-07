@@ -63,6 +63,24 @@ export function LancementSettings() {
         </Row>
       </Group>
 
+      <Group title="Démarrage">
+        <Row title="Lancer RoAccount avec Windows" desc="L'appli démarre toute seule à l'ouverture de session." explain="Écrit une entrée dans le démarrage de ton compte Windows (clé Run de l'utilisateur, sans droits administrateur). Désactive l'interrupteur pour la retirer. Le coffre reste verrouillé : il faut ton mot de passe maître.">
+          <Toggle on={s.startWithWindows} label="Lancer avec Windows" onChange={(v) => { set({ startWithWindows: v }); void api.setAutostart(v, s.startMinimized).catch((e) => { store.toast(String(e)); set({ startWithWindows: !v }); }); }} />
+        </Row>
+        <Row title="Démarrer réduit" desc="Au démarrage de Windows, RoAccount reste dans la zone de notification." explain="Ouvre-le ensuite depuis l'icône de la zone de notification.">
+          <Toggle on={s.startMinimized} label="Démarrer réduit" onChange={(v) => { set({ startMinimized: v }); if (s.startWithWindows) void api.setAutostart(true, v).catch((e) => store.toast(String(e))); }} />
+        </Row>
+        <Row title="Profil lancé au démarrage" desc="Lance automatiquement un profil quelques secondes après l'ouverture de RoAccount." explain="Les profils se créent dans Jouer. Le coffre doit être déverrouillé pour que le lancement ait lieu.">
+          <select className="sort-select" value={s.autoLaunchProfile} onChange={(e) => set({ autoLaunchProfile: e.target.value })} aria-label="Profil au démarrage">
+            <option value="">Aucun</option>
+            {(s.profiles ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </Row>
+        <Row title="Alerte nouvelle version de Roblox" desc="Un message quand Roblox sort une version plus récente que celle de tes clients.">
+          <Toggle on={s.robloxAlert} label="Alerte version Roblox" onChange={(v) => set({ robloxAlert: v })} />
+        </Row>
+      </Group>
+
       <Group title="Arrêt">
         <Row title="Raccourci d'urgence" desc="Arrête tous les clients, depuis n'importe quelle appli.">
           {s.emergencyHotkey && <span className="kbd">{s.emergencyHotkey.replace("CommandOrControl", "Ctrl")}</span>}
@@ -245,6 +263,9 @@ export function DonneesSettings() {
         <Row title="Nettoyer les logs Roblox" desc="Supprime les fichiers de logs de Roblox, qui grossissent avec plusieurs clients." explain="« Nettoyer » les supprime tout de suite ; l'interrupteur les supprime aussi à chaque démarrage de RoAccount.">
           <button className="btn" onClick={() => void api.cleanRobloxLogs().then((n) => store.toast(`${n} fichier(s) supprimé(s).`)).catch((e) => store.toast(String(e)))}>Nettoyer</button>
           <Toggle on={s.cleanRobloxLogs} label="Nettoyer à chaque démarrage" onChange={(v) => store.updateSettings({ cleanRobloxLogs: v })} />
+        </Row>
+        <Row title="Vider le cache de Roblox" desc="Supprime les téléchargements et fichiers temporaires de Roblox. Il les retélécharge au besoin." explain="Ferme tes clients avant : les fichiers qu'ils utilisent sont ignorés. Le premier lancement suivant peut être un peu plus long.">
+          <button className="btn" onClick={() => void api.cleanRobloxCache(true).then((n) => { if (window.confirm(`Libérer environ ${(n / 1048576).toFixed(0)} Mo ?`)) return api.cleanRobloxCache(false).then((f) => store.toast(`${(f / 1048576).toFixed(0)} Mo libérés.`)); }).catch((e) => store.toast(String(e)))}>Mesurer et vider</button>
         </Row>
       </Group>
 

@@ -46,6 +46,13 @@ pub fn run() {
             // icône tray + menu
             let _ = tray::build(app.handle());
 
+            // fenêtre cachée au démarrage si lancé avec Windows (--minimized)
+            if let Some(w) = app.get_webview_window("main") {
+                if !std::env::args().any(|a| a == "--minimized") {
+                    let _ = w.show();
+                }
+            }
+
             // fermer = réduire dans la zone de notification (réglable ; sinon l'appli quitte)
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
@@ -120,6 +127,9 @@ pub fn run() {
             commands::open_path,
             commands::save_export,
             commands::clean_roblox_logs,
+            commands::clean_roblox_cache,
+            commands::stop_accounts,
+            commands::set_autostart,
             commands::schedule_shutdown,
             commands::cancel_batch,
         ])

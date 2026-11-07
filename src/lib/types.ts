@@ -133,7 +133,41 @@ export interface Settings {
   // données
   accountCacheMin: number;
   cleanRobloxLogs: boolean;
+
+  // profils, planification, démarrage
+  profiles: LaunchProfile[];
+  schedules: Schedule[];
+  autoLaunchProfile: string;
+  startWithWindows: boolean;
+  startMinimized: boolean;
+  robloxAlert: boolean;
+  reminders: Record<string, string>;
 }
+
+/** Un lancement enregistré : qui joue, où, comment. */
+export interface LaunchProfile {
+  id: string;
+  name: string;
+  accountIds: string[];
+  target: string;
+  serverMode: "same" | "random" | "closest" | "private";
+  privateLink: string;
+  cooldownMs: number;
+}
+
+/** Démarre ou arrête un profil à une heure donnée (RoAccount doit être ouvert, même réduit). */
+export interface Schedule {
+  id: string;
+  profileId: string;
+  time: string; // "HH:MM"
+  days: number[]; // 0 = dimanche … 6 = samedi ; vide = tous les jours
+  action: "start" | "stop";
+  enabled: boolean;
+  last?: string; // dernière exécution, "AAAA-MM-JJ HH:MM"
+}
+
+export interface SessionEvent { t: number; accountId: string; kind: "launch" | "end" | "fail" | "restart"; note?: string; }
+export interface SessionDay { day: string; secs: Record<string, number>; launches: Record<string, number>; ends: Record<string, number>; }
 
 export const DEFAULT_SETTINGS: Settings = {
   multiInstance: true,
@@ -206,6 +240,14 @@ export const DEFAULT_SETTINGS: Settings = {
 
   accountCacheMin: 10,
   cleanRobloxLogs: false,
+
+  profiles: [],
+  schedules: [],
+  autoLaunchProfile: "",
+  startWithWindows: false,
+  startMinimized: true,
+  robloxAlert: true,
+  reminders: {},
 };
 
 export interface ClientMetric {
@@ -232,7 +274,7 @@ export interface RobloxVersion { installed: string | null; latest: string | null
 
 export type ViewId =
   | "accueil" | "jouer" | "comptes" | "perf"
-  | "serveurs" | "moniteur" | "discord" | "debug" | "macros" | "outils"
+  | "serveurs" | "moniteur" | "historique" | "discord" | "debug" | "macros" | "outils"
   | "s-lancement" | "s-apparence" | "s-securite" | "s-donnees" | "s-apropos" | "s-raccourcis";
 
 export interface MacroInfo { name: string; code: string; }

@@ -119,9 +119,12 @@ export const api = {
   openPath: (kind: "data" | "exports" | "roblox-logs") => invoke<void>("open_path", { kind }),
   saveExport: (name: string, content: string) => invoke<string>("save_export", { name, content }),
   cleanRobloxLogs: () => invoke<number>("clean_roblox_logs"),
+  cleanRobloxCache: (dryRun: boolean) => invoke<number>("clean_roblox_cache", { dryRun }),
+  setAutostart: (enabled: boolean, minimized: boolean) => invoke<void>("set_autostart", { enabled, minimized }),
   scheduleShutdown: (minutes: number) => invoke<void>("schedule_shutdown", { minutes }),
 
   cancelBatch: () => invoke<void>("cancel_batch"),
+  stopAccounts: (ids: string[]) => invoke<number>("stop_accounts", { ids }),
 
   /** Écoute la progression d'un lot (ticket → run → join). Renvoie la fonction pour se désabonner. */
   onBatch: async (cb: (e: { id: string; stage: string; error: string | null }) => void): Promise<() => void> => {
@@ -376,6 +379,12 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return ("C:/…/RoAccount/exports/" + String(args?.name)) as T;
     case "clean_roblox_logs":
       return 12 as T;
+    case "clean_roblox_cache":
+      return (args?.dryRun ? 842_000_000 : 842_000_000) as T;
+    case "stop_accounts":
+      return ((args?.ids as string[]) ?? []).length as T;
+    case "set_autostart":
+      return undefined as T;
     case "schedule_shutdown":
       return undefined as T;
     case "remove_account": {

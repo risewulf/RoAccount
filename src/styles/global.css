@@ -573,3 +573,57 @@ textarea.code:focus { border-color: var(--brand); }
 .pick-grid > .pick:nth-child(3) { animation-delay: 80ms; }
 .pick-grid > .pick:nth-child(4) { animation-delay: 120ms; }
 .pick-grid > .pick:nth-child(n+5) { animation-delay: 160ms; }
+
+/* ===================== profils de lancement ===================== */
+.profiles-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 16px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--r-xl); }
+.prof { display: inline-flex; align-items: stretch; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); overflow: hidden; }
+.prof button { display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 34px; font-weight: 700; font-size: 13px; }
+.prof button:hover { background: var(--raised); }
+.prof .prof-run { color: var(--brand); padding: 0 10px 0 12px; }
+.prof .prof-run svg { width: 14px; height: 14px; }
+.prof .n { color: var(--faint); font-weight: 600; font-size: 12px; }
+.prof .x { padding: 0 10px; color: var(--faint); }
+.prof .x svg { width: 12px; height: 12px; }
+.prof .x:hover { color: var(--crit); }
+
+/* ===================== palette de commandes ===================== */
+.cp-overlay { align-items: start; padding-top: 12vh; }
+.cp { width: min(620px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: var(--shadow); overflow: hidden; animation: dialogIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.cp-in { display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 58px; border-bottom: 1px solid var(--border-soft); }
+.cp-in svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.cp-in input { flex: 1; background: none; border: 0; outline: 0; color: var(--fg); font-size: 15px; min-width: 0; }
+.cp-list { max-height: 360px; overflow-y: auto; padding: 8px; }
+.cp-i { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; text-align: left; font-weight: 600; }
+.cp-i svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.cp-i small { margin-left: auto; color: var(--faint); font-weight: 500; font-size: 12px; }
+.cp-i.on { background: var(--surface-2); }
+.cp-i.on svg { color: var(--brand); }
+
+/* ===================== historique ===================== */
+.hist-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; height: 190px; align-items: end; margin-top: 8px; }
+.hist-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.hist-bar i { display: block; width: 100%; max-width: 54px; border-radius: 10px 10px 4px 4px; background: var(--surface-3, var(--raised)); transition: height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); min-height: 3px; }
+.hist-bar.today i { background: var(--brand); }
+.hist-bar .v { font-size: 12px; color: var(--muted); font-weight: 600; }
+.hist-bar .l { font-size: 12px; color: var(--faint); text-transform: capitalize; }
+.ev-list { display: flex; flex-direction: column; max-height: 380px; overflow-y: auto; }
+.ev { display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-bottom: 1px solid var(--border-soft); font-size: 13.5px; }
+.ev i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ev .when { color: var(--faint); font-family: var(--font-mono); font-size: 12px; min-width: 96px; }
+.ev small { color: var(--faint); margin-left: auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===================== planification ===================== */
+.sched { display: flex; align-items: center; gap: 14px; padding: 12px 4px; border-top: 1px solid var(--border-soft); }
+.sched .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sched .t span { color: var(--muted); font-size: 12.5px; }
+.sched-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 0 2px; border-top: 1px solid var(--border-soft); }
+.sched-form .days { display: inline-flex; gap: 4px; }
+.sched-form .days .chip { min-width: 34px; height: 34px; padding: 0; justify-content: center; }
+
+/* ===================== rapport de santé / glisser-déposer ===================== */
+.health-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.health-sum > div { background: var(--surface-2); border-radius: var(--r-md); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.health-sum b { font-size: 28px; font-weight: 800; }
+.health-sum span { font-size: 12.5px; color: var(--muted); }
+.chip.drop { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); transform: scale(1.06); }
+tr.acc-row[draggable="true"] { cursor: grab; }

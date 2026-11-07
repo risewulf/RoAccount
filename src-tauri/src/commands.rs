@@ -679,6 +679,57 @@ pub async fn kill_all(state: State<'_, AppState>) -> Result<()> {
     Ok(())
 }
 
+/// Arrête seulement les clients de certains comptes (fermeture douce, puis de force après le délai réglé).
+/// Renvoie le nombre de clients arrêtés.
+#[tauri::command]
+pub async fn stop_accounts(state: State<'_, AppState>, ids: Vec<String>) -> Result<usize> {
+    let delay = state.settings.lock().unwrap().close_delay_secs;
+    let targets: Vec<(String, u32)> = {
+        let p = state.pids.lock().unwrap();
+        ids.iter().filter_map(|id| p.get(id).map(|pid| (id.clone(), *pid))).collect()
+    };
+    // le moteur de reconnexion ne doit pas les relancer
+    for (id, _) in &targets {
+        state.rejoin.lock().unwrap().remove(id);
+        state.running.lock().unwrap().remove(id);
+    }
+    let pids: Vec<u32> = targets.iter().map(|(_, p)| *p).collect();
+    let n = pids.len();
+    tokio::task::spawn_blocking(move || {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            for pid in &pids {
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/PID", &pid.to_string()])
+                    .creation_flags(0x0800_0000)
+                    .output();
+            }
+            std::thread::sleep(std::time::Duration::from_secs(delay as u64));
+            for pid in &pids {
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/F", "/PID", &pid.to_string()])
+                    .creation_flags(0x0800_0000)
+                    .output();
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = (&pids, delay);
+        }
+    })
+    .await
+    .map_err(|e| AppError::Other(e.to_string()))?;
+    {
+        let mut p = state.pids.lock().unwrap();
+        for (id, _) in &targets {
+            p.remove(id);
+        }
+    }
+    state.push_log("stop", format!("{n} client(s) arrêté(s)"));
+    Ok(n)
+}
+
 /// Arrange les fenêtres des clients Roblox : "fit" (grille plein écran) ou "tiny" (vignettes).
 #[tauri::command]
 pub async fn arrange_windows(state: State<'_, AppState>, layout: Option<String>) -> Result<()> {
@@ -1210,6 +1261,93 @@ pub fn clean_roblox_logs() -> Result<usize> {
         }
     }
     Ok(n)
+}
+
+/// Taille d'un dossier (récursif, erreurs ignorées).
+fn dir_size(p: &std::path::Path) -> u64 {
+    let mut n = 0u64;
+    if let Ok(rd) = std::fs::read_dir(p) {
+        for e in rd.flatten() {
+            let path = e.path();
+            if let Ok(md) = e.metadata() {
+                if md.is_dir() {
+                    n += dir_size(&path);
+                } else {
+                    n += md.len();
+                }
+            }
+        }
+    }
+    n
+}
+
+/// Vide le cache de Roblox (rbx-storage, fichiers temporaires). `dry_run` = ne fait que mesurer.
+/// Renvoie les octets (à libérer, ou libérés). Les fichiers verrouillés par un client en cours sont ignorés.
+#[tauri::command]
+pub fn clean_roblox_cache(dry_run: bool) -> Result<u64> {
+    let mut dirs_to_clean: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(mut d) = dirs::data_local_dir() {
+        d.push("Roblox");
+        let mut a = d.clone();
+        a.push("rbx-storage");
+        dirs_to_clean.push(a);
+        let mut b = d.clone();
+        b.push("Downloads");
+        dirs_to_clean.push(b);
+    }
+    let mut t = std::env::temp_dir();
+    t.push("Roblox");
+    dirs_to_clean.push(t);
+
+    let mut total = 0u64;
+    for d in dirs_to_clean {
+        if !d.is_dir() {
+            continue;
+        }
+        let size = dir_size(&d);
+        if dry_run {
+            total += size;
+            continue;
+        }
+        if let Ok(rd) = std::fs::read_dir(&d) {
+            for e in rd.flatten() {
+                let p = e.path();
+                let _ = if p.is_dir() { std::fs::remove_dir_all(&p) } else { std::fs::remove_file(&p) };
+            }
+        }
+        total += size.saturating_sub(dir_size(&d));
+    }
+    Ok(total)
+}
+
+/// Lance RoAccount avec Windows (clé « Run » de l'utilisateur) ; `minimized` = démarre dans la zone de notification.
+#[tauri::command]
+pub fn set_autostart(enabled: bool, minimized: bool) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let key = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+        let mut cmd = std::process::Command::new("reg");
+        if enabled {
+            let exe = std::env::current_exe().map_err(|e| AppError::Io(e.to_string()))?;
+            let mut val = format!("\"{}\"", exe.display());
+            if minimized {
+                val.push_str(" --minimized");
+            }
+            cmd.args(["add", key, "/v", "RoAccount", "/t", "REG_SZ", "/d", &val, "/f"]);
+        } else {
+            cmd.args(["delete", key, "/v", "RoAccount", "/f"]);
+        }
+        let out = cmd.creation_flags(0x0800_0000).output().map_err(|e| AppError::Other(e.to_string()))?;
+        if !out.status.success() && enabled {
+            return Err(AppError::Other("Impossible d'écrire la clé de démarrage Windows.".into()));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (enabled, minimized);
+    }
+    Ok(())
 }
 
 /// Programme l'extinction du PC dans `minutes` minutes (0 = annule).

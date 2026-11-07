@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
-import type { AccountMeta } from "../lib/types";
+import type { AccountMeta, LaunchProfile } from "../lib/types";
+import { detect, newId } from "../lib/launcher";
+import { logEvent } from "../lib/history";
 import { Avatar } from "../components/Avatar";
 import { Seg } from "../components/Controls";
 import { IconCheck, IconPlay, IconPlus, IconSearch, IconServer, IconUser, IconX } from "../components/icons";
+import { runProfile } from "../lib/launcher";
+import { Schedules } from "../components/Schedules";
 
 interface Fav { name: string; target: string; }
 interface Prog { stage: string; error?: string | null; }
@@ -17,17 +21,6 @@ function loadFavs(): Fav[] {
     { name: "Adopt Me!", target: "roblox.com/games/920587237/Adopt-Me" },
     { name: "Pet Sim 99", target: "roblox.com/games/8737899170" },
   ];
-}
-
-/** Ce que l'utilisateur a collé : jeu, serveur privé, joueur à suivre… */
-function detect(t: string): { kind: "game" | "private" | "user" | "none"; label: string } {
-  const s = t.trim();
-  if (!s) return { kind: "none", label: "Colle un lien de jeu, un serveur privé, un ID de place ou un @pseudo." };
-  if (s.includes("privateServerLinkCode") || s.includes("share?code=")) return { kind: "private", label: "Serveur privé détecté" };
-  if (s.startsWith("@") || s.includes("/users/")) return { kind: "user", label: `Rejoindre ${s.startsWith("@") ? s : "ce joueur"}` };
-  const m = s.match(/games\/(\d+)/) ?? s.match(/^(\d+)$/);
-  if (m) return { kind: "game", label: `Jeu · place ${m[1]}` };
-  return { kind: "none", label: "Cible non reconnue." };
 }
 
 function statusOf(a: AccountMeta, excludeMain: boolean): { text: string; warn: boolean; disabled: boolean } {
@@ -57,7 +50,7 @@ export function JouerView() {
   // progression d'un lot, envoyée par le backend
   useEffect(() => {
     let off: (() => void) | undefined;
-    void api.onBatch((e) => setProg((p) => ({ ...p, [e.id]: { stage: e.stage, error: e.error } }))).then((u) => { off = u; });
+    void api.onBatch((e) => { setProg((p) => ({ ...p, [e.id]: { stage: e.stage, error: e.error } })); if (e.stage === "failed") logEvent({ accountId: e.id, kind: "fail", note: e.error ?? undefined }); }).then((u) => { off = u; });
     return () => { off?.(); };
   }, []);
 
@@ -103,6 +96,43 @@ export function JouerView() {
     try { localStorage.setItem("roaccount.profiles", JSON.stringify(next)); } catch { /* ignore */ }
   }
 
+  const [pname, setPname] = useState<string | null>(null);
+  const profiles = settings.profiles ?? [];
+
+  function applyProfile(p: LaunchProfile) {
+    store.updateSettings({ target: p.target, serverMode: p.serverMode, privateLink: p.privateLink, cooldownMs: p.cooldownMs });
+    store.clearSelection();
+    store.setSelection(p.accountIds.filter((id) => accounts.some((a) => a.id === id)), true);
+    store.toast(`Profil « ${p.name} » chargé.`);
+  }
+  function saveProfile() {
+    const name = (pname ?? "").trim();
+    if (!name) return;
+    if (!picked.length) { store.toast("Choisis d'abord les comptes à enregistrer."); return; }
+    const p: LaunchProfile = {
+      id: newId(), name: name.slice(0, 28), accountIds: picked.map((a) => a.id),
+      target: settings.target, serverMode: settings.serverMode, privateLink: settings.privateLink, cooldownMs: settings.cooldownMs,
+    };
+    store.updateSettings({ profiles: [...profiles, p] });
+    setPname(null);
+    store.toast(`Profil « ${p.name} » enregistré.`);
+  }
+  function dropProfile(id: string) {
+    store.updateSettings({
+      profiles: profiles.filter((p) => p.id !== id),
+      schedules: (settings.schedules ?? []).filter((x) => x.profileId !== id),
+      autoLaunchProfile: settings.autoLaunchProfile === id ? "" : settings.autoLaunchProfile,
+    });
+  }
+  async function runNow(p: LaunchProfile) {
+    try {
+      const r = await runProfile(p, accounts);
+      r.launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: p.name }); });
+      store.toast(r.launched.length ? `Profil « ${p.name} » : ${r.launched.length} client(s) lancé(s)${r.skipped ? `, ${r.skipped} ignoré(s)` : ""}.` : "Aucun compte du profil n'est disponible.");
+      window.setTimeout(() => { void store.refreshAll(); }, 8000);
+    } catch (e) { store.toast(String(e)); }
+  }
+
   async function launch() {
     if (busy) return;
     const ids = usable.map((a) => a.id);
@@ -123,7 +153,7 @@ export function JouerView() {
         if (mode === "private" && !privateLink.trim()) { store.toast("Colle le lien du serveur privé."); setBusy(false); return; }
         launched = await api.launchBatchServers(ids, settings.target, mode, privateLink, settings.cooldownMs);
       }
-      launched.forEach((id) => store.patch(id, { running: true, presence: "InGame" }));
+      launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "launch", note: settings.target }); });
       store.toast(`${launched.length} client(s) lancé(s).`);
       window.setTimeout(() => { void store.refreshAll(); }, 8000);
       if (settings.minimizeOnLaunch) window.setTimeout(() => { void api.windowAction(null, "minimize").catch(() => {}); }, 12000);
@@ -158,6 +188,25 @@ export function JouerView() {
   return (
     <div className="page">
       <div className="page-head"><div><h1>Jouer</h1><p>Choisis les comptes, la destination, puis lance.</p></div></div>
+      <div className="profiles-bar">
+        <span className="lbl" style={{ margin: 0 }}>Profils</span>
+        {profiles.length === 0 && pname === null && <span className="sub" style={{ margin: 0 }}>Enregistre « ces comptes + ce jeu + ce mode » pour le relancer en un clic.</span>}
+        {profiles.map((p) => (
+          <span className="prof" key={p.id}>
+            <button className="prof-run" onClick={() => void runNow(p)} title={`Lancer ${p.accountIds.length} compte(s)`}><IconPlay /></button>
+            <button className="prof-name" onClick={() => applyProfile(p)} title="Charger dans la sélection">{p.name}<span className="n">{p.accountIds.length}</span></button>
+            <button className="x" onClick={() => dropProfile(p.id)} aria-label={`Supprimer ${p.name}`}><IconX /></button>
+          </span>
+        ))}
+        {pname === null ? (
+          <button className="chip" onClick={() => { if (!picked.length) { store.toast("Choisis d'abord les comptes à enregistrer."); return; } setPname(""); }}><IconPlus />Enregistrer la sélection</button>
+        ) : (
+          <span className="inline">
+            <input className="txt" style={{ height: 34, width: 180 }} autoFocus value={pname} placeholder="Nom du profil" onChange={(e) => setPname(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveProfile(); if (e.key === "Escape") setPname(null); }} />
+            <button className="btn sm" onClick={saveProfile}>Enregistrer</button>
+          </span>
+        )}
+      </div>
       <div className="steps">
         {/* 1 — comptes */}
         <div className="step">
@@ -265,6 +314,7 @@ export function JouerView() {
           )}
         </div>
       </div>
+      <Schedules />
     </div>
   );
 }

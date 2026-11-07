@@ -68,8 +68,10 @@ A two-step launcher. **Who plays?** — filter by name or group and pick account
 
 A live batch panel shows each account moving through ticket → client started → joining → in game, and the batch can be cancelled.
 
+**Launch profiles** save "these accounts + this game + this server mode + this delay" so you can start them again in one click, and **scheduling** starts or stops a profile at a given time (RoAccount must stay open, it can be minimised to the notification area). A profile can also start by itself when RoAccount opens.
+
 ### Accounts
-Search, filter by status, organise into groups, colour tags and favourites. The side panel has **Overview** (status, game, Robux, Premium, friends), **Settings** (alias, note, group, colour, MAIN account) and **Cookie** (reveal with confirmation, remove). Switch to a **side list** layout from the title bar.
+**Check all** tests every cookie at once and reports which ones are valid, expired or unreachable. Drag accounts onto a group chip to move them. Search, filter by status, organise into groups, colour tags and favourites. The side panel has **Overview** (status, game, Robux, Premium, friends), **Settings** (alias, note, group, colour, MAIN account) and **Cookie** (reveal with confirmation, remove). Switch to a **side list** layout from the title bar.
 
 ### Performance
 Three presets — **Max accounts**, **Balanced**, **Roblox defaults** — plus fine-tuning:
@@ -78,6 +80,12 @@ Three presets — **Max accounts**, **Balanced**, **Roblox defaults** — plus f
 - adaptive priority for background clients, spreading clients across CPU cores, periodic memory trimming, throttling or restarting a client above a memory threshold;
 - **For this PC**: watches your running clients for ~25 s and recommends a preset for the number of clients you plan to run;
 - **Share your config**: copy or paste a share code, save to a file, load from a file.
+
+### History
+Play time per account and per day (last 7 days), launches, closes, automatic restarts and failures, a filterable event log and CSV export. Stored only on your PC for 60 days.
+
+### Command palette
+`Ctrl+K` — type "launch luna", "monitor", "lock"… to go anywhere or run anything without leaving the keyboard.
 
 ### Servers
 Browse public servers by ping or fill level, hide full ones, pick one and send any accounts into it. The **Private** tab lists, buys, renames and manages your private servers.
@@ -95,11 +103,11 @@ Make your accounts friends with each other, import from Roblox Account Manager (
 A live log of what RoAccount does (errors, warnings, info, debug), filters, pause and **Copy diagnostic** for support.
 
 ### Settings
-- **Launch** — multi-instance, launch delay, launch arguments, reconnect / restart on crash, give up after N tries in M minutes, Anti-AFK, emergency hotkey, graceful-close delay, scheduled PC shutdown, Roblox client version.
+- **Launch** — start with Windows (optionally minimised), profile launched at startup, Roblox update alert, multi-instance, launch delay, launch arguments, reconnect / restart on crash, give up after N tries in M minutes, Anti-AFK, emergency hotkey, graceful-close delay, scheduled PC shutdown, Roblox client version.
 - **Appearance** — dark, light or system theme, any accent colour (RoAccount red by default), density, tab layout, sounds, animations, minimise to the notification area.
 - **Security** — change the master password, auto-lock after inactivity, clear the clipboard after copying a cookie.
-- **Data** — open the data folder, encrypted backup, account info cache, clean Roblox logs.
-- **Keyboard shortcuts** — `Ctrl+1…9` to switch pages, `Ctrl+N` add an account, `Ctrl+F` search, `Ctrl+Enter` play, `Ctrl+L` lock, `F5` refresh, `?` for the full list.
+- **Data** — open the data folder, encrypted backup, account info cache, clean Roblox logs, empty the Roblox cache.
+- **Keyboard shortcuts** — `Ctrl+K` command palette, `Ctrl+1…9` to switch pages, `Ctrl+N` add an account, `Ctrl+F` search, `Ctrl+Enter` play, `Ctrl+L` lock, `F5` refresh, `?` for the full list.
 
 ## How multi-client works
 

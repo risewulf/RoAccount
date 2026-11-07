@@ -16,6 +16,9 @@ import {
   AProposSettings, ApparenceSettings, DonneesSettings, LancementSettings, RaccourcisSettings, SecuriteSettings,
 } from "./views/SettingsViews";
 import { LockScreen } from "./views/LockScreen";
+import { Automation } from "./components/Automation";
+import { CommandPalette } from "./components/CommandPalette";
+import { HistoriqueView } from "./views/HistoriqueView";
 import { StoreProvider, useStore } from "./store";
 import { api } from "./lib/api";
 import { applyAppearance } from "./lib/ui";
@@ -58,6 +61,7 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
       const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
       const mod = e.ctrlKey || e.metaKey;
       if (mod && go[e.key]) { e.preventDefault(); setView(go[e.key]); return; }
+      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); window.dispatchEvent(new Event("roa-palette")); return; }
       if (mod && e.key.toLowerCase() === "n") { e.preventDefault(); store.setAddOpen(true); return; }
       if (mod && e.key.toLowerCase() === "f") { e.preventDefault(); window.dispatchEvent(new Event("roa-search")); return; }
       if (mod && e.key.toLowerCase() === "l") { e.preventDefault(); onLock(); return; }
@@ -136,6 +140,7 @@ function Pages() {
     case "perf": return <PerfView />;
     case "serveurs": return <ServeursView />;
     case "moniteur": return <MoniteurView />;
+    case "historique": return <HistoriqueView />;
     case "discord": return <DiscordView />;
     case "debug": return <DebugView />;
     case "macros": return <div className="page"><MacrosView /></div>;
@@ -169,6 +174,8 @@ function Shell({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => voi
         <main className="main" key={store.view}><Pages /></main>
       </div>
       <Runtime onLock={onLock} onKillAll={onKillAll} />
+      <Automation />
+      <CommandPalette onLock={onLock} onKillAll={onKillAll} />
       {store.addOpen && (
         <AddAccountDialog
           onClose={() => store.setAddOpen(false)}

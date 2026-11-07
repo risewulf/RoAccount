@@ -230,12 +230,41 @@ export function AccountsView() {
     setGname(""); setNewGroup(false);
   }
 
+  const [report, setReport] = useState<{ ok: string[]; expired: string[]; failed: string[] } | null>(null);
+  const [dropOn, setDropOn] = useState<string | null>(null);
+
+  /** Teste tous les cookies et en fait un rapport (valides / expirés / erreurs réseau). */
   async function checkAll() {
     setBusy(true);
+    const r = { ok: [] as string[], expired: [] as string[], failed: [] as string[] };
     try {
-      for (const a of accounts) store.replace(await api.refreshAccount(a.id));
-      store.toast("Tous les comptes ont été vérifiés.");
-    } catch (e) { store.toast(String(e)); } finally { setBusy(false); }
+      for (const a of accounts) {
+        const label = a.alias || a.username;
+        try {
+          const m = await api.refreshAccount(a.id);
+          store.replace(m);
+          (m.health === "cookie_expired" ? r.expired : r.ok).push(label);
+        } catch { r.failed.push(label); }
+      }
+      setReport(r);
+    } finally { setBusy(false); }
+  }
+  function dragIds(e: React.DragEvent, id: string) {
+    const ids = selected.has(id) ? [...selected] : [id];
+    e.dataTransfer.setData("text/roaccount-ids", JSON.stringify(ids));
+    e.dataTransfer.effectAllowed = "move";
+  }
+  async function dropOnGroup(e: React.DragEvent, g: string) {
+    e.preventDefault();
+    setDropOn(null);
+    let ids: string[] = [];
+    try { ids = JSON.parse(e.dataTransfer.getData("text/roaccount-ids") || "[]"); } catch { /* ignore */ }
+    ids = ids.filter((id) => accounts.find((a) => a.id === id)?.group !== g);
+    if (!ids.length) return;
+    try {
+      for (const id of ids) store.replace(await api.updateAccount(id, { group: g }));
+      store.toast(`${ids.length} compte(s) déplacé(s) vers « ${g} ».`);
+    } catch (err) { store.toast(String(err)); }
   }
   async function launch(a: AccountMeta) {
     try {
@@ -304,7 +333,14 @@ export function AccountsView() {
           <div className="chips" style={{ marginBottom: 16 }}>
             <button className={"chip" + (group === "Tous" ? " on" : "")} onClick={() => setGroup("Tous")}>Tous</button>
             {groups.map(([g, n]) => (
-              <button key={g} className={"chip" + (group === g ? " on" : "")} onClick={() => setGroup(g)}>
+              <button
+                key={g}
+                className={"chip" + (group === g ? " on" : "") + (dropOn === g ? " drop" : "")}
+                onClick={() => setGroup(g)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropOn !== g) setDropOn(g); }}
+                onDragLeave={() => setDropOn((d) => (d === g ? null : d))}
+                onDrop={(e) => void dropOnGroup(e, g)}
+              >
                 <span className="d" style={{ background: "var(--brand)" }} />{g}<span className="n">{n}</span>
               </button>
             ))}
@@ -338,7 +374,7 @@ export function AccountsView() {
                         const st = statusLine(a);
                         const on = selected.has(a.id);
                         return (
-                          <tr key={a.id} className="hov acc-row" style={{ cursor: "pointer", background: cur?.id === a.id ? "var(--surface-2)" : undefined }} onClick={() => store.setCurrent(a.id)}>
+                          <tr key={a.id} className="hov acc-row" draggable onDragStart={(e) => dragIds(e, a.id)} title="Glisse sur un groupe pour déplacer" style={{ cursor: "pointer", background: cur?.id === a.id ? "var(--surface-2)" : undefined }} onClick={() => store.setCurrent(a.id)}>
                             <td onClick={(e) => e.stopPropagation()}>
                               <span className={"cbx" + (on ? " on" : "")} role="checkbox" aria-checked={on} tabIndex={0} onClick={() => store.toggle(a.id)}><IconCheck /></span>
                             </td>
@@ -375,6 +411,25 @@ export function AccountsView() {
         </>
       )}
 
+      {report && (
+        <div className="overlay" onClick={() => setReport(null)}>
+          <div className="dialog" onClick={(e) => e.stopPropagation()}>
+            <h3>Vérification des comptes</h3>
+            <div className="health-sum">
+              <div><b style={{ color: "var(--ok)" }}>{report.ok.length}</b><span>valide{report.ok.length > 1 ? "s" : ""}</span></div>
+              <div><b style={{ color: "var(--warn)" }}>{report.expired.length}</b><span>à reconnecter</span></div>
+              <div><b style={{ color: "var(--crit)" }}>{report.failed.length}</b><span>erreur{report.failed.length > 1 ? "s" : ""} réseau</span></div>
+            </div>
+            {report.expired.length > 0 && <p><b>Cookie expiré :</b> {report.expired.join(", ")}. Reconnecte-les avec « Ajouter un compte → Roblox login ».</p>}
+            {report.failed.length > 0 && <p><b>Non testés :</b> {report.failed.join(", ")}. Vérifie ta connexion et réessaie.</p>}
+            {report.expired.length === 0 && report.failed.length === 0 && <p>Tous les cookies sont valides.</p>}
+            <div className="dialog-actions">
+              {report.expired.length > 0 && <button className="btn" onClick={() => { setState("check"); setReport(null); }}>Voir les comptes à reconnecter</button>}
+              <button className="btn solid" onClick={() => setReport(null)}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

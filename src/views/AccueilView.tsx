@@ -6,6 +6,8 @@ import { fmtDuration, fmtMem } from "../lib/ui";
 import type { AccountMeta, ClientMetric, NewsItem, RobloxVersion } from "../lib/types";
 import { Avatar } from "../components/Avatar";
 import { Toggle } from "../components/Controls";
+import { loadEvents, logEvent } from "../lib/history";
+import { launchable, newId, runProfile } from "../lib/launcher";
 import { IconCheck, IconGrid, IconRefresh, IconShrink, IconX } from "../components/icons";
 
 type Tab = "news" | "overview";
@@ -165,6 +167,21 @@ function Overview() {
   const byId = new Map((metrics?.clients ?? []).filter((c) => c.account_id).map((c) => [c.account_id!, c]));
   const detailed = settings.homeView === "detailed";
 
+  // clients fermés ou plantés récemment (dernier événement = fermeture, il y a moins d'une heure)
+  const crashed = useMemo(() => {
+    const last = new Map<string, { kind: string; t: number }>();
+    loadEvents().forEach((e) => last.set(e.accountId, { kind: e.kind, t: e.t }));
+    return accounts.filter((a) => { const l = last.get(a.id); return !!l && l.kind === "end" && Date.now() - l.t < 3600_000 && launchable(a); });
+  }, [accounts, metrics]); // eslint-disable-line
+
+  async function relaunchCrashed() {
+    try {
+      const r = await runProfile({ id: newId(), name: "relance", accountIds: crashed.map((a) => a.id), target: settings.target, serverMode: settings.serverMode, privateLink: settings.privateLink, cooldownMs: settings.cooldownMs }, accounts);
+      r.launched.forEach((id) => { store.patch(id, { running: true, presence: "InGame" }); logEvent({ accountId: id, kind: "restart", note: "relance manuelle" }); });
+      store.toast(`${r.launched.length} client(s) relancé(s).`);
+    } catch (e) { store.toast(String(e)); }
+  }
+
   const game = playing.find((a) => a.game)?.game ?? null;
   const cpu = metrics ? metrics.clients.reduce((s, c) => s + c.cpu, 0) : 0;
   const memPct = metrics?.mem_pct ?? 0;
@@ -181,6 +198,9 @@ function Overview() {
             <button className="link-btn" onClick={() => store.updateSettings({ autoRejoin: !settings.autoRejoin })}>{settings.autoRejoin ? "Désactiver" : "Activer"}</button>
           </p>
         </div>
+        {crashed.length > 0 && (
+          <button className="btn primary" onClick={() => void relaunchCrashed()}><IconRefresh />Relancer {crashed.length} client{crashed.length > 1 ? "s" : ""} fermé{crashed.length > 1 ? "s" : ""}</button>
+        )}
       </div>
 
       <div className="sys-bar">
