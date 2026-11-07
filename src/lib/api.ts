@@ -53,6 +53,9 @@ export const api = {
   /** Deletes one trashed account for good, or the whole trash when no id is given. */
   purgeTrash: (id?: string) => invoke<void>("purge_trash", { id: id ?? null }),
   discordPost: (message: string) => invoke<void>("discord_post", { message }),
+  /** Discord Rich Presence on the user's profile (needs the Discord app open). */
+  setRichPresence: (enabled: boolean, details: string, status: string, running: number, total: number, since: number | null) =>
+    invoke<void>("set_rich_presence", { enabled, details, status, running, total, since }),
   notifyDesktop: (title: string, body: string) => invoke<void>("notify_desktop", { title, body }),
   /** Incidents detected by the background loop (crash, disconnect, freeze, give-up). */
   onIncident: async (cb: (e: { id: string; name: string; kind: string }) => void): Promise<() => void> => {
@@ -428,6 +431,7 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return undefined as T;
     }
     case "discord_post":
+    case "set_rich_presence":
     case "notify_desktop":
       return undefined as T;
     case "update_account": {

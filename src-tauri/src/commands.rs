@@ -259,6 +259,57 @@ pub fn purge_trash(state: State<'_, AppState>, id: Option<String>) -> Result<()>
     state.vault.lock().unwrap().purge(id.as_deref())
 }
 
+/// Discord application that owns the Rich Presence (the RoAccount app).
+const RPC_APP_ID: &str = "1567637730777628785";
+
+/// Shows (or clears) the Rich Presence on the user's Discord profile. Called by the UI every ~20 s.
+/// Does nothing when Discord isn't running; the next call retries.
+#[tauri::command]
+pub async fn set_rich_presence(
+    state: State<'_, AppState>,
+    enabled: bool,
+    details: String,
+    status: String,
+    running: i32,
+    total: i32,
+    since: Option<i64>,
+) -> Result<()> {
+    use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+    let mut guard = state.rpc.lock().unwrap();
+    if !enabled {
+        if let Some(mut c) = guard.take() {
+            let _ = c.clear_activity();
+            let _ = c.close();
+        }
+        return Ok(());
+    }
+    if guard.is_none() {
+        let mut c = DiscordIpcClient::new(RPC_APP_ID);
+        if c.connect().is_err() {
+            return Ok(()); // Discord is closed: try again on the next tick
+        }
+        *guard = Some(c);
+    }
+    let mut act = activity::Activity::new()
+        .details(details.as_str())
+        .state(status.as_str())
+        .assets(activity::Assets::new().large_image("logo").large_text("RoAccount"));
+    if let Some(ts) = since {
+        act = act.timestamps(activity::Timestamps::new().start(ts));
+    }
+    if total > 0 && running > 0 {
+        act = act.party(activity::Party::new().size([running.min(total), total]));
+    }
+    let failed = guard.as_mut().map(|c| c.set_activity(act).is_err()).unwrap_or(false);
+    if failed {
+        // the connection died (Discord restarted): drop it, reconnect next time
+        if let Some(mut c) = guard.take() {
+            let _ = c.close();
+        }
+    }
+    Ok(())
+}
+
 /// Native Windows notification (honours the "Windows notifications" setting).
 #[tauri::command]
 pub fn notify_desktop(app: AppHandle, state: State<'_, AppState>, title: String, body: String) {

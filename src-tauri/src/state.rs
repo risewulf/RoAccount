@@ -50,6 +50,8 @@ pub struct AppState {
     /// (fenêtre « ne répond pas » pendant le chargement, présence Roblox pas encore up to date).
     pub launched_at: Mutex<HashMap<String, Instant>>,
     /// Deferred Discord alerts (account -> when the incident happened, message): sent only if the account is still not back after `alert_after_min`.
+    /// Discord Rich Presence connection (None until Discord is reachable).
+    pub rpc: Mutex<Option<discord_rich_presence::DiscordIpcClient>>,
     pub pending_alerts: Mutex<HashMap<String, (Instant, String)>>,
 }
 
@@ -69,6 +71,7 @@ impl AppState {
             last_summary: Mutex::new(None),
             cancel_batch: AtomicBool::new(false),
             launched_at: Mutex::new(HashMap::new()),
+            rpc: Mutex::new(None),
             pending_alerts: Mutex::new(HashMap::new()),
         }
     }

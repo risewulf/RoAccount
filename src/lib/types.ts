@@ -147,6 +147,7 @@ export interface Settings {
   // alerts, backup, rotation, shortcuts
   alertAfterMin: number;
   notifyWindows: boolean;
+  richPresence: boolean;
   alertDeadCookie: boolean;
   dailySummary: boolean;
   dailySummaryHour: number;
@@ -273,6 +274,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
   alertAfterMin: 0,
   notifyWindows: false,
+  richPresence: false,
   alertDeadCookie: true,
   dailySummary: false,
   dailySummaryHour: 21,

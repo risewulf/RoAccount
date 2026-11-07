@@ -57,6 +57,13 @@ export function DiscordView() {
         ))}
       </div>
 
+      <h2 className="group-title">Your Discord profile</h2>
+      <div className="card">
+        <Row title="Rich Presence" desc="Shows “RoAccount — N accounts in game”, the game and the time on your Discord profile. Needs the Discord app open on this PC.">
+          <Toggle on={settings.richPresence} label="Rich Presence" onChange={(v) => store.updateSettings({ richPresence: v })} />
+        </Row>
+      </div>
+
       <h2 className="group-title">Smarter alerts</h2>
       <div className="card">
         <Row title="Crash and disconnect alerts" desc="Only alert if the account is still not back in game after this delay. 0 alerts right away.">

@@ -68,6 +68,32 @@ export function Automation() {
     return () => window.removeEventListener("roa-account-alert", h);
   }, []);
 
+  // ---- Discord Rich Presence: how many accounts are in game, and where ----
+  const rpc = useRef<{ since: number | null; was: boolean }>({ since: null, was: false });
+  useEffect(() => {
+    const push = () => {
+      const s = setRef.current;
+      const st = rpc.current;
+      if (!s.richPresence && !st.was) return;
+      st.was = !!s.richPresence;
+      const accs = accRef.current;
+      const playing = accs.filter((a) => a.running || a.presence === "InGame");
+      if (playing.length && !st.since) st.since = Math.floor(Date.now() / 1000);
+      if (!playing.length) st.since = null;
+      const game = playing.find((a) => a.game)?.game;
+      const n = playing.length;
+      void api.setRichPresence(
+        !!s.richPresence,
+        n ? `${n} account${n !== 1 ? "s" : ""} in game` : `Managing ${accs.length} account${accs.length !== 1 ? "s" : ""}`,
+        n ? (game ? `Playing ${game}` : "Multi-instance") : "Nothing running",
+        n, accs.length, st.since,
+      ).catch(() => {});
+    };
+    push();
+    const t = window.setInterval(push, 20_000);
+    return () => window.clearInterval(t);
+  }, [settings.richPresence]); // eslint-disable-line
+
   // ---- daily summary on Discord ----
   useEffect(() => {
     const t = window.setInterval(() => {

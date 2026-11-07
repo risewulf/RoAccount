@@ -148,6 +148,7 @@ pub fn run() {
             commands::purge_trash,
             commands::discord_post,
             commands::notify_desktop,
+            commands::set_rich_presence,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting RoAccount")

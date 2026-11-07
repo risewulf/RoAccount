@@ -71,6 +71,8 @@ pub struct Settings {
     pub alert_after_min: u32,
     /// Native Windows notifications for crashes, freezes, expired cookies…
     pub notify_windows: bool,
+    /// Show "RoAccount — N accounts in game" on your Discord profile (Rich Presence).
+    pub rich_presence: bool,
     /// Copy the encrypted vault to backups/ every time RoAccount exits, keeping the last N copies.
     pub auto_backup: bool,
     pub auto_backup_keep: u32,
@@ -123,6 +125,7 @@ impl Default for Settings {
             restart_mem_mb: 3500,
             alert_after_min: 0,
             notify_windows: false,
+            rich_presence: false,
             auto_backup: true,
             auto_backup_keep: 5,
             queue_min_free_mb: 0,
