@@ -1,7 +1,7 @@
 [package]
 name = "roaccount"
 version = "0.2.0"
-description = "Gestionnaire de comptes Roblox local — coffre chiffré, lancement multi-comptes."
+description = "Local Roblox account manager for Windows - encrypted vault, multi-client launching."
 authors = ["Risewulf"]
 edition = "2021"
 rust-version = "1.77"
