@@ -29,6 +29,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(AppState::new())
         .setup(|app| {
@@ -142,7 +143,17 @@ pub fn run() {
             commands::set_autostart,
             commands::schedule_shutdown,
             commands::cancel_batch,
+            commands::list_trash,
+            commands::restore_account,
+            commands::purge_trash,
+            commands::discord_post,
+            commands::notify_desktop,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while starting RoAccount");
+        .build(tauri::generate_context!())
+        .expect("error while starting RoAccount")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                commands::auto_backup(&app.state::<AppState>());
+            }
+        });
 }

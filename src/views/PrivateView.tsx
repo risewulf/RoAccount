@@ -3,11 +3,12 @@ import { api } from "../lib/api";
 import { useStore } from "../store";
 import type { PrivateServer } from "../lib/types";
 import { IconRefresh } from "../components/icons";
+import { isDead } from "../lib/launcher";
 
 export function PrivateView() {
   const store = useStore();
   const { accounts, selected, settings } = store;
-  const usable = accounts.filter((a) => a.health !== "cookie_expired");
+  const usable = accounts.filter((a) => !isDead(a));
   const [accId, setAccId] = useState<string>("");
   const [servers, setServers] = useState<PrivateServer[] | null>(null);
   const [busy, setBusy] = useState(false);

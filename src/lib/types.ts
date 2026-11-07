@@ -17,7 +17,8 @@ export interface AccountMeta {
   place_id: number | null;
   game_icon: string | null;
   avatar_url: string | null;
-  health: string; // "ok" | "cookie_expired" | "unknown"
+  health: string; // "ok" | "cookie_expired" | "banned" | "unknown"
+  tags?: string[];
   running: boolean;
 }
 
@@ -124,7 +125,7 @@ export interface Settings {
   animations: "on" | "reduced" | "off";
   sounds: boolean;
   skipSplash: boolean;
-  homeView: "detailed" | "compact";
+  homeView: "detailed" | "compact" | "mosaic";
 
   // sécurité (front uniquement)
   autoLockMin: number;
@@ -142,7 +143,28 @@ export interface Settings {
   startMinimized: boolean;
   robloxAlert: boolean;
   reminders: Record<string, string>;
+
+  // alerts, backup, rotation, shortcuts
+  alertAfterMin: number;
+  notifyWindows: boolean;
+  alertDeadCookie: boolean;
+  dailySummary: boolean;
+  dailySummaryHour: number;
+  lastDailySummary?: string;
+  queueMinFreeMb: number;
+  autoBackup: boolean;
+  autoBackupKeep: number;
+  rotation: RotationConfig;
+  accountDelays: Record<string, number>;
+  shortcuts: Record<string, string>;
+  onboarded: boolean;
 }
+
+/** Keeps `keep` accounts of a profile running and swaps one every `everyMin` minutes. */
+export interface RotationConfig { enabled: boolean; profileId: string; keep: number; everyMin: number; }
+
+/** An account in the trash (recoverable for 7 days). */
+export interface TrashItem { id: string; username: string; display_name: string; deleted_at: number; }
 
 /** Un lancement enregistré : qui joue, où, comment. */
 export interface LaunchProfile {
@@ -248,6 +270,19 @@ export const DEFAULT_SETTINGS: Settings = {
   startMinimized: true,
   robloxAlert: true,
   reminders: {},
+
+  alertAfterMin: 0,
+  notifyWindows: false,
+  alertDeadCookie: true,
+  dailySummary: false,
+  dailySummaryHour: 21,
+  queueMinFreeMb: 0,
+  autoBackup: true,
+  autoBackupKeep: 5,
+  rotation: { enabled: false, profileId: "", keep: 2, everyMin: 30 },
+  accountDelays: {},
+  shortcuts: {},
+  onboarded: false,
 };
 
 export interface ClientMetric {

@@ -9,6 +9,7 @@ import { Seg } from "../components/Controls";
 import { IconCheck, IconPlay, IconPlus, IconSearch, IconServer, IconUser, IconX } from "../components/icons";
 import { runProfile } from "../lib/launcher";
 import { Schedules } from "../components/Schedules";
+import { Rotation } from "../components/Rotation";
 
 interface Fav { name: string; target: string; }
 interface Prog { stage: string; error?: string | null; }
@@ -26,6 +27,7 @@ function loadFavs(): Fav[] {
 function statusOf(a: AccountMeta, excludeMain: boolean): { text: string; warn: boolean; disabled: boolean } {
   // Un compte MAIN reste lançable quand on le choisit à la main : l'exclusion ne vaut que pour « tout sélectionner ».
   const note = a.main && excludeMain ? " · left out of auto-select" : "";
+  if (a.health === "banned") return { text: "Banned", warn: true, disabled: true };
   if (a.health === "cookie_expired") return { text: "To check", warn: true, disabled: true };
   if (a.presence === "InGame" || a.running) return { text: "Already in game", warn: false, disabled: true };
   if (a.presence === "Online" || a.presence === "Studio") return { text: "Online" + note, warn: false, disabled: false };
@@ -180,7 +182,7 @@ export function JouerView() {
   const sub = (r: { stage: string; p: Prog; a: AccountMeta }) => {
     if (r.stage === "failed") return <span className="err">failed · {r.p.error}</span>;
     if (r.stage === "cancelled") return <span>cancelled</span>;
-    if (r.stage === "queued") return <span>en attente</span>;
+    if (r.stage === "queued") return <span>waiting…</span>;
     if (r.stage === "in") return <span>in game</span>;
     return <span>{r.stage === "ticket" ? "requesting the ticket…" : r.stage === "run" ? "client launched…" : "connecting to the server…"}</span>;
   };
@@ -195,6 +197,7 @@ export function JouerView() {
           <span className="prof" key={p.id}>
             <button className="prof-run" onClick={() => void runNow(p)} title={`Launch ${p.accountIds.length} account(s)`}><IconPlay /></button>
             <button className="prof-name" onClick={() => applyProfile(p)} title="Load into the selection">{p.name}<span className="n">{p.accountIds.length}</span></button>
+            <button className="x" onClick={() => store.updateSettings({ profiles: [...profiles, { ...p, id: newId(), name: p.name + " (copy)" }] })} aria-label={`Duplicate ${p.name}`} title="Duplicate">⧉</button>
             <button className="x" onClick={() => dropProfile(p.id)} aria-label={`Delete ${p.name}`}><IconX /></button>
           </span>
         ))}
@@ -315,6 +318,7 @@ export function JouerView() {
         </div>
       </div>
       <Schedules />
+      <Rotation />
     </div>
   );
 }

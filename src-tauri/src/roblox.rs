@@ -121,6 +121,17 @@ pub async fn friends_count(roblox_id: u64) -> Result<u64> {
     Ok(c.count)
 }
 
+/// Whether Roblox reports this user as banned (public users endpoint, no cookie needed).
+pub async fn is_banned(roblox_id: u64) -> Result<bool> {
+    let url = format!("https://users.roblox.com/v1/users/{}", roblox_id);
+    let resp = client()?.get(url).send().await?;
+    if !resp.status().is_success() {
+        return Ok(false);
+    }
+    let v: serde_json::Value = resp.json().await.unwrap_or_default();
+    Ok(v.get("isBanned").and_then(|b| b.as_bool()).unwrap_or(false))
+}
+
 #[derive(Deserialize)]
 struct PresenceResp {
     #[serde(rename = "userPresences")]

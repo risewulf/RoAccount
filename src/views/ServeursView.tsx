@@ -5,6 +5,7 @@ import type { ServerInfo } from "../lib/types";
 import { Toggle } from "../components/Controls";
 import { IconCopy, IconRefresh, IconSend } from "../components/icons";
 import { PrivateView } from "./PrivateView";
+import { isDead } from "../lib/launcher";
 
 type Sort = "ping" | "full" | "empty";
 
@@ -42,7 +43,7 @@ export function ServeursView() {
     return l;
   }, [servers, sort, hideFull]);
 
-  const usable = accounts.filter((a) => a.health !== "cookie_expired" && !a.main);
+  const usable = accounts.filter((a) => !isDead(a) && !a.main);
   function toggleSender(id: string) {
     setSenders((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }

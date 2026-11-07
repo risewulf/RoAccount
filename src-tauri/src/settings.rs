@@ -67,6 +67,16 @@ pub struct Settings {
     pub restart_mem: bool,
     pub restart_mem_mb: u64,
 
+    /// Discord alerts for a crash/disconnect are only sent if the account is still not back in game after N minutes (0 = immediately).
+    pub alert_after_min: u32,
+    /// Native Windows notifications for crashes, freezes, expired cookies…
+    pub notify_windows: bool,
+    /// Copy the encrypted vault to backups/ every time RoAccount exits, keeping the last N copies.
+    pub auto_backup: bool,
+    pub auto_backup_keep: u32,
+    /// Batch launches wait until this much RAM (MB) is free before starting the next client (0 = off).
+    pub queue_min_free_mb: u64,
+
     /// Tous les réglages purement visuels du front (thème, accent, disposition…)
     /// sont conservés tels quels ici, sans que Rust ait besoin de les connaître.
     #[serde(flatten)]
@@ -111,6 +121,11 @@ impl Default for Settings {
             throttle_mem_mb: 2500,
             restart_mem: false,
             restart_mem_mb: 3500,
+            alert_after_min: 0,
+            notify_windows: false,
+            auto_backup: true,
+            auto_backup_keep: 5,
+            queue_min_free_mb: 0,
             extra: serde_json::Map::new(),
         }
     }

@@ -14,9 +14,14 @@ export function detect(t: string): { kind: TargetKind; label: string } {
   return { kind: "none", label: "Target not recognised." };
 }
 
+/** Cookie expired or account banned: nothing can be launched or checked for it. */
+export function isDead(a: AccountMeta): boolean {
+  return a.health === "cookie_expired" || a.health === "banned";
+}
+
 /** Un compte peut-il être lancé maintenant ? (un compte MAIN choisi à la main l'est toujours) */
 export function launchable(a: AccountMeta): boolean {
-  return a.health !== "cookie_expired" && a.presence !== "InGame" && !a.running;
+  return !isDead(a) && a.presence !== "InGame" && !a.running;
 }
 
 export function newId(): string {

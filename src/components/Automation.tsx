@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
-import { runProfile } from "../lib/launcher";
-import { addPlaytime, dayKey, logEvent, loadEvents } from "../lib/history";
+import { isDead, launchable, runProfile } from "../lib/launcher";
+import { addPlaytime, dayKey, fmtDuration, logEvent, loadDays, loadEvents } from "../lib/history";
 
 const TICK_S = 10;
 
@@ -42,6 +42,85 @@ export function Automation() {
         first = false;
       } catch { /* ignore */ }
     }, TICK_S * 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // ---- incidents detected by the background loop → history ----
+  useEffect(() => {
+    let un: () => void = () => {};
+    let gone = false;
+    void api.onIncident((e) => { if (e.id) logEvent({ accountId: e.id, kind: "fail", note: e.kind }); }).then((f) => { if (gone) f(); else un = f; });
+    return () => { gone = true; un(); };
+  }, []);
+
+  // ---- an account refresh found a dead cookie or a ban: toast, Windows notification, Discord ----
+  useEffect(() => {
+    const h = (ev: Event) => {
+      const d = (ev as CustomEvent).detail as { id: string; name: string; health: string };
+      const banned = d.health === "banned";
+      const msg = banned ? `${d.name} was banned by Roblox.` : `${d.name}'s cookie expired: sign in again.`;
+      storeRef.current.toast(msg);
+      logEvent({ accountId: d.id, kind: "fail", note: d.health });
+      void api.notifyDesktop("RoAccount", msg).catch(() => {});
+      if (setRef.current.alertDeadCookie) void api.discordPost((banned ? "⛔ " : "🔑 ") + `**${d.name}** ` + (banned ? "was banned by Roblox." : "— cookie expired, sign in again.")).catch(() => {});
+    };
+    window.addEventListener("roa-account-alert", h);
+    return () => window.removeEventListener("roa-account-alert", h);
+  }, []);
+
+  // ---- daily summary on Discord ----
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const s = setRef.current;
+      if (!s.dailySummary) return;
+      const now = new Date();
+      const k = dayKey(now);
+      if (now.getHours() !== s.dailySummaryHour || s.lastDailySummary === k) return;
+      storeRef.current.updateSettings({ lastDailySummary: k });
+      const d = loadDays().find((x) => x.day === k);
+      const sum = (o?: Record<string, number>) => Object.values(o ?? {}).reduce((a, b) => a + b, 0);
+      const incidents = loadEvents().filter((e) => e.kind === "fail" && dayKey(new Date(e.t)) === k).length;
+      const running = accRef.current.filter((a) => a.running || a.presence === "InGame").length;
+      void api.discordPost(`📅 **RoAccount daily summary** — play time ${fmtDuration(sum(d?.secs))}, ${sum(d?.launches)} launch(es), ${sum(d?.ends)} closure(s), ${incidents} incident(s), ${running} client(s) running now.`).catch(() => {});
+    }, 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // ---- rotation: keep N accounts of a profile running and swap them on a timer ----
+  const rot = useRef({ started: new Map<string, number>(), lastRan: new Map<string, number>(), lastSwap: 0, busy: false });
+  useEffect(() => {
+    const t = window.setInterval(async () => {
+      const s = setRef.current;
+      const r = s.rotation;
+      const st = rot.current;
+      if (!r?.enabled || st.busy) return;
+      const p = (s.profiles ?? []).find((x) => x.id === r.profileId);
+      if (!p) return;
+      const byId = new Map(accRef.current.map((a) => [a.id, a]));
+      const pool = p.accountIds.filter((id) => { const a = byId.get(id); return !!a && !a.main && !isDead(a); });
+      const isRun = (id: string) => { const a = byId.get(id); return !!a && (a.running || a.presence === "InGame"); };
+      const running = pool.filter(isRun);
+      const waiting = pool.filter((id) => !isRun(id) && launchable(byId.get(id)!)).sort((x, y) => (st.lastRan.get(x) ?? 0) - (st.lastRan.get(y) ?? 0));
+      const nm = (id: string) => byId.get(id)?.username ?? id;
+      const start = async (id: string) => {
+        const res = await runProfile({ ...p, accountIds: [id] }, accRef.current);
+        res.launched.forEach((a) => { storeRef.current.patch(a, { running: true, presence: "InGame" }); logEvent({ accountId: a, kind: "launch", note: `${p.name} (rotation)` }); st.started.set(a, Date.now()); st.lastRan.set(a, Date.now()); });
+      };
+      st.busy = true;
+      try {
+        if (running.length < r.keep && waiting.length) {
+          await start(waiting[0]);
+          st.lastSwap = Date.now();
+        } else if (running.length >= r.keep && waiting.length && Date.now() - st.lastSwap >= Math.max(5, r.everyMin) * 60_000) {
+          const out = [...running].sort((x, y) => (st.started.get(x) ?? 0) - (st.started.get(y) ?? 0))[0];
+          await api.stopAccounts([out]);
+          storeRef.current.patch(out, { running: false, presence: "Offline" });
+          await start(waiting[0]);
+          st.lastSwap = Date.now();
+          storeRef.current.toast(`Rotation: ${nm(out)} → ${nm(waiting[0])}`);
+        }
+      } catch (e) { storeRef.current.toast(String(e)); } finally { st.busy = false; }
+    }, 20_000);
     return () => window.clearInterval(t);
   }, []);
 

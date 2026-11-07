@@ -23,7 +23,9 @@ import { StoreProvider, useStore } from "./store";
 import { api } from "./lib/api";
 import { applyAppearance } from "./lib/ui";
 import { installDebugLog } from "./lib/debuglog";
-import { DEFAULT_SETTINGS, type Settings, type VaultStatus, type ViewId } from "./lib/types";
+import { DEFAULT_SETTINGS, type Settings, type VaultStatus } from "./lib/types";
+import { bindingsOf, comboFromEvent } from "./lib/shortcuts";
+import { Onboarding } from "./components/Onboarding";
 
 installDebugLog();
 
@@ -52,24 +54,25 @@ function Runtime({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => v
 
   // clavier
   useEffect(() => {
-    const go: Record<string, ViewId> = {
-      "1": "accueil", "2": "comptes", "3": "jouer", "4": "serveurs", "5": "s-lancement",
-      "6": "moniteur", "7": "discord", "8": "debug", "9": "perf",
-    };
     const h = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && go[e.key]) { e.preventDefault(); setView(go[e.key]); return; }
-      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); window.dispatchEvent(new Event("roa-palette")); return; }
-      if (mod && e.key.toLowerCase() === "n") { e.preventDefault(); store.setAddOpen(true); return; }
-      if (mod && e.key.toLowerCase() === "f") { e.preventDefault(); window.dispatchEvent(new Event("roa-search")); return; }
-      if (mod && e.key.toLowerCase() === "l") { e.preventDefault(); onLock(); return; }
-      if (mod && e.key === "Enter") { e.preventDefault(); window.dispatchEvent(new Event("roa-play")); return; }
-      if (e.key === "F5") { e.preventDefault(); void store.refreshAll(); store.toast("Accounts refreshed."); return; }
+      const combo = comboFromEvent(e);
+      const act = combo ? bindingsOf(settings.shortcuts).get(combo) : undefined;
+      if (act && (act.typing || !typing)) {
+        e.preventDefault();
+        if (act.view) setView(act.view);
+        else if (act.id === "palette") window.dispatchEvent(new Event("roa-palette"));
+        else if (act.id === "add") store.setAddOpen(true);
+        else if (act.id === "search") window.dispatchEvent(new Event("roa-search"));
+        else if (act.id === "lock") onLock();
+        else if (act.id === "play") window.dispatchEvent(new Event("roa-play"));
+        else if (act.id === "refresh") { void store.refreshAll(); store.toast("Accounts refreshed."); }
+        else if (act.id === "selectall") window.dispatchEvent(new Event("roa-selectall"));
+        else if (act.id === "verify") window.dispatchEvent(new Event("roa-verify"));
+        return;
+      }
       if (typing) return;
-      if (mod && e.key.toLowerCase() === "a") { e.preventDefault(); window.dispatchEvent(new Event("roa-selectall")); return; }
-      if (mod && e.key.toLowerCase() === "r") { e.preventDefault(); window.dispatchEvent(new Event("roa-verify")); return; }
       if (e.key === "Delete") { window.dispatchEvent(new Event("roa-delete")); return; }
       if (e.key === "?") { setView("s-raccourcis"); return; }
       if (e.key === "Escape") { store.setAddOpen(false); store.clearSelection(); }
@@ -176,6 +179,7 @@ function Shell({ onLock, onKillAll }: { onLock: () => void; onKillAll: () => voi
       </div>
       <Runtime onLock={onLock} onKillAll={onKillAll} />
       <Automation />
+      <Onboarding />
       <CommandPalette onLock={onLock} onKillAll={onKillAll} />
       {store.addOpen && (
         <AddAccountDialog

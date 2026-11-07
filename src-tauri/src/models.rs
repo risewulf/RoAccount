@@ -19,6 +19,12 @@ pub struct StoredAccount {
     /// Compte « MAIN » : exclu des actions en masse (lancement en lot, amis, auto-rejoin…).
     #[serde(default)]
     pub main: bool,
+    /// Free-form tags (farm, trade, alt…).
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Unix seconds when the account was moved to the trash (None = alive). Purged after 7 days.
+    #[serde(default)]
+    pub deleted_at: Option<u64>,
 }
 
 impl Drop for StoredAccount {
@@ -40,6 +46,7 @@ pub struct AccountMeta {
     pub favorite: bool,
     pub color: String,
     pub main: bool,
+    pub tags: Vec<String>,
     // enrichissements live (optionnels, remplis par un refresh)
     pub robux: Option<i64>,
     pub premium: Option<bool>,
@@ -49,7 +56,7 @@ pub struct AccountMeta {
     pub place_id: Option<u64>,
     pub game_icon: Option<String>, // URL vignette du jeu (rbxcdn)
     pub avatar_url: Option<String>, // URL avatar du compte (rbxcdn)
-    pub health: String,           // "ok" | "cookie_expired" | "unknown"
+    pub health: String,           // "ok" | "cookie_expired" | "banned" | "unknown"
     pub running: bool,
 }
 
@@ -66,6 +73,7 @@ impl From<&StoredAccount> for AccountMeta {
             favorite: a.favorite,
             color: a.color.clone(),
             main: a.main,
+            tags: a.tags.clone(),
             robux: None,
             premium: None,
             friends: None,
@@ -191,4 +199,13 @@ pub struct PrivateServer {
     pub place_id: Option<u64>,
     pub link: Option<String>,
     pub active: Option<bool>,
+}
+
+/// An account in the trash (recoverable for 7 days).
+#[derive(Debug, Clone, Serialize)]
+pub struct TrashItem {
+    pub id: String,
+    pub username: String,
+    pub display_name: String,
+    pub deleted_at: u64,
 }

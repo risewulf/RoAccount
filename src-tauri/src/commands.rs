@@ -84,6 +84,8 @@ pub async fn add_account(
         favorite: false,
         color: String::new(),
         main: false,
+        tags: Vec::new(),
+        deleted_at: None,
     };
     let mut v = state.vault.lock().unwrap();
     v.add(account)
@@ -164,6 +166,8 @@ pub async fn login_roblox(
         favorite: false,
         color: String::new(),
         main: false,
+        tags: Vec::new(),
+        deleted_at: None,
     };
     let mut v = state.vault.lock().unwrap();
     v.add(account)
@@ -232,9 +236,42 @@ pub fn update_account(
     favorite: Option<bool>,
     color: Option<String>,
     main: Option<bool>,
+    tags: Option<Vec<String>>,
 ) -> Result<AccountMeta> {
     let mut v = state.vault.lock().unwrap();
-    v.update_fields(&id, group, alias, note, favorite, color, main)
+    v.update_fields(&id, group, alias, note, favorite, color, main, tags)
+}
+
+/// Accounts removed in the last 7 days (recoverable).
+#[tauri::command]
+pub fn list_trash(state: State<'_, AppState>) -> Vec<crate::models::TrashItem> {
+    state.vault.lock().unwrap().trash()
+}
+
+#[tauri::command]
+pub fn restore_account(state: State<'_, AppState>, id: String) -> Result<AccountMeta> {
+    state.vault.lock().unwrap().restore(&id)
+}
+
+/// Permanently deletes a trashed account, or the whole trash when `id` is empty.
+#[tauri::command]
+pub fn purge_trash(state: State<'_, AppState>, id: Option<String>) -> Result<()> {
+    state.vault.lock().unwrap().purge(id.as_deref())
+}
+
+/// Native Windows notification (honours the "Windows notifications" setting).
+#[tauri::command]
+pub fn notify_desktop(app: AppHandle, state: State<'_, AppState>, title: String, body: String) {
+    let settings = state.settings.lock().unwrap().clone();
+    crate::background::desktop_notify(&app, &settings, &title, &body);
+}
+
+/// Posts a custom message to the configured Discord webhook (daily summary…).
+#[tauri::command]
+pub async fn discord_post(state: State<'_, AppState>, message: String) -> Result<()> {
+    let settings = state.settings.lock().unwrap().clone();
+    crate::discord::notify(&settings, &message, false).await;
+    Ok(())
 }
 
 /// Rafraîchit les infos live d'un compte (robux, premium, présence, amis).
@@ -254,6 +291,12 @@ pub async fn refresh_account(state: State<'_, AppState>, id: String) -> Result<A
             .ok_or(AppError::AccountNotFound)?;
         (cookie, meta)
     };
+
+    // banned accounts are reported by Roblox's public users endpoint
+    if roblox::is_banned(meta.roblox_id).await.unwrap_or(false) {
+        meta.health = "banned".into();
+        return Ok(meta);
+    }
 
     // vérifier le cookie d'abord
     match roblox::validate(&cookie).await {
@@ -537,6 +580,39 @@ async fn run_batch(
     let mut launched = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     for (i, (id, cookie, _rid, username)) in targets.iter().enumerate() {
+        if state.cancel_batch.load(Ordering::SeqCst) {
+            emit(id, "cancelled", None);
+            continue;
+        }
+        // per-account extra delay, then (optionally) wait for enough free RAM before starting this client
+        let extra = settings
+            .extra
+            .get("accountDelays")
+            .and_then(|m| m.get(id.as_str()))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        if extra > 0 && i > 0 {
+            emit(id, "queued", None);
+            tokio::time::sleep(Duration::from_secs(extra.min(600))).await;
+        }
+        if settings.queue_min_free_mb > 0 && i > 0 {
+            emit(id, "queued", None);
+            let mut waited = 0u64;
+            loop {
+                if state.cancel_batch.load(Ordering::SeqCst) || waited >= 600 {
+                    break;
+                }
+                let free = tokio::task::spawn_blocking(crate::tools::pc_info)
+                    .await
+                    .map(|p| p.ram_free_mb)
+                    .unwrap_or(u64::MAX);
+                if free >= settings.queue_min_free_mb {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                waited += 5;
+            }
+        }
         if state.cancel_batch.load(Ordering::SeqCst) {
             emit(id, "cancelled", None);
             continue;
@@ -1148,6 +1224,8 @@ pub async fn import_accounts(
                     favorite: false,
                     color: String::new(),
                     main: false,
+                    tags: Vec::new(),
+                    deleted_at: None,
                 };
                 let res = { state.vault.lock().unwrap().add(account) };
                 match res {
@@ -1395,4 +1473,52 @@ pub fn schedule_shutdown(minutes: u32) -> Result<()> {
 #[tauri::command]
 pub fn cancel_batch(state: State<'_, AppState>) {
     state.cancel_batch.store(true, Ordering::SeqCst);
+}
+
+
+/// Copies the encrypted vault into backups/ (only if it changed) and keeps the newest N automatic copies.
+pub fn auto_backup(state: &AppState) {
+    let (enabled, keep) = {
+        let s = state.settings.lock().unwrap();
+        (s.auto_backup, s.auto_backup_keep.max(1) as usize)
+    };
+    if !enabled {
+        return;
+    }
+    let src = { state.vault.lock().unwrap().file_path() };
+    if !src.exists() {
+        return;
+    }
+    let Some(parent) = src.parent() else { return };
+    let dir = parent.join("backups");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let is_auto = |p: &std::path::PathBuf| {
+        p.file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.starts_with("RoAccount-auto-") && n.ends_with(".roavault"))
+            .unwrap_or(false)
+    };
+    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+        .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| is_auto(p)).collect())
+        .unwrap_or_default();
+    files.sort();
+    files.reverse();
+    if let (Some(newest), Ok(cur)) = (files.first(), std::fs::read(&src)) {
+        if std::fs::read(newest).map(|old| old == cur).unwrap_or(false) {
+            return; // unchanged since the last automatic backup
+        }
+    }
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if std::fs::copy(&src, dir.join(format!("RoAccount-auto-{ts}.roavault"))).is_err() {
+        return;
+    }
+    files.insert(0, dir.join(format!("RoAccount-auto-{ts}.roavault")));
+    for p in files.into_iter().skip(keep) {
+        let _ = std::fs::remove_file(p);
+    }
 }

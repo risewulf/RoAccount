@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { useStore } from "../store";
 import type { RobloxVersion, Settings } from "../lib/types";
 import { Group, NumInput, Row, Seg, SettingsPage, Toggle } from "../components/Controls";
+import { SHORTCUT_ACTIONS, bindingsOf, comboFromEvent, comboOf as bindingOf, validCombo } from "../lib/shortcuts";
 
 /* ------------------------------------------------------------------ */
 /* Lancement                                                            */
@@ -38,6 +39,9 @@ export function LancementSettings() {
         </Row>
         <Row title="Launch delay" desc="The time between two clients in a batch. Longer is gentler on the PC.">
           <NumInput value={Math.round(s.cooldownMs / 1000)} onChange={(n) => set({ cooldownMs: n * 1000 })} min={0} max={120} width={80} /><span className="sub">s</span>
+        </Row>
+        <Row title="Wait for free RAM" desc="Before each client of a batch, wait until this much memory is free. 0 turns it off." explain="Handy with many accounts: RoAccount pauses the batch (up to 10 minutes per client) instead of starting a client that would push the PC into swap. Per-account extra delays are set in each account's Settings tab.">
+          <NumInput value={s.queueMinFreeMb} onChange={(n) => set({ queueMinFreeMb: n })} min={0} max={32000} width={90} /><span className="sub">MB free</span>
         </Row>
         <Row title="Launch arguments" desc="Words added after each launch link." explain="Letters, digits and + : . _ - only. Leave empty if you don't know what it's for.">
           <input className="txt mono" style={{ width: 230 }} value={s.launchArgs} onChange={(e) => set({ launchArgs: e.target.value })} placeholder="none" aria-label="Launch arguments" />
@@ -257,6 +261,10 @@ export function DonneesSettings() {
           <button className="btn" onClick={() => void api.listBackups().then(setBackups).catch((e) => store.toast(String(e)))}>Import…</button>
           <button className="btn" onClick={() => void api.exportBackup().then((p) => store.toast("Backup: " + p)).catch((e) => store.toast(String(e)))}>Export…</button>
         </Row>
+        <Row title="Automatic backup" desc="Copies the encrypted vault to the backups folder every time RoAccount closes. Only changed vaults are copied.">
+          {s.autoBackup && (<><span className="sub">keep</span><NumInput value={s.autoBackupKeep} onChange={(n) => store.updateSettings({ autoBackupKeep: n })} min={1} max={50} width={70} /></>)}
+          <Toggle on={s.autoBackup} label="Automatic backup" onChange={(v) => store.updateSettings({ autoBackup: v })} />
+        </Row>
         <Row title="Keep account info for" desc="How long before Robux, presence and game are refreshed automatically.">
           <NumInput value={s.accountCacheMin} onChange={(n) => store.updateSettings({ accountCacheMin: n })} min={1} max={120} width={80} /><span className="sub">min</span>
         </Row>
@@ -315,25 +323,63 @@ export function AProposSettings() {
 /* Raccourcis                                                           */
 /* ------------------------------------------------------------------ */
 
-const LEFT: [string, string[]][] = [
-  ["Go to Home", ["Ctrl", "1"]], ["Go to Accounts", ["Ctrl", "2"]], ["Go to Play", ["Ctrl", "3"]],
-  ["Go to Servers", ["Ctrl", "4"]], ["Go to Settings", ["Ctrl", "5"]], ["Go to Monitor", ["Ctrl", "6"]],
-  ["Go to Discord", ["Ctrl", "7"]], ["Go to Debug", ["Ctrl", "8"]], ["Go to Performance", ["Ctrl", "9"]],
-];
-const RIGHT: [string, string[]][] = [
-  ["Add account", ["Ctrl", "N"]], ["Search", ["Ctrl", "F"]], ["Select all (shown)", ["Ctrl", "A"]],
-  ["Check the selection, or everything", ["Ctrl", "R"]], ["Remove the selection", ["Delete"]], ["Press Play", ["Ctrl", "Enter"]],
-  ["Refresh the display", ["F5"]], ["Lock the vault (master password)", ["Ctrl", "L"]],
-  ["Close the dialog, clear the selection", ["Esc"]], ["Show shortcuts", ["?"]],
+const FIXED: [string, string[]][] = [
+  ["Remove the selection", ["Delete"]],
+  ["Close the dialog, clear the selection", ["Esc"]],
+  ["Show shortcuts", ["?"]],
 ];
 
 export function RaccourcisSettings() {
-  const R = ({ rows }: { rows: [string, string[]][] }) => (
-    <div>{rows.map(([t, k]) => (<div className="kb-row" key={t}><span>{t}</span><span className="kbs">{k.map((x) => <span key={x} className="kbd">{x}</span>)}</span></div>))}</div>
-  );
+  const store = useStore();
+  const custom = store.settings.shortcuts ?? {};
+  const [rec, setRec] = useState<string | null>(null);
+
+  // while recording, the next key combination becomes the new shortcut
+  useEffect(() => {
+    if (!rec) return;
+    const h = (e: KeyboardEvent) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === "Escape") { setRec(null); return; }
+      const c = comboFromEvent(e);
+      if (!c) return;
+      if (!validCombo(c)) { store.toast("Use Ctrl, Alt or Shift with a key, or a function key."); return; }
+      const clash = bindingsOf(custom).get(c);
+      if (clash && clash.id !== rec) { store.toast(`Already used by “${clash.label}”.`); return; }
+      store.updateSettings({ shortcuts: { ...custom, [rec]: c } });
+      setRec(null);
+    };
+    window.addEventListener("keydown", h, true);
+    return () => window.removeEventListener("keydown", h, true);
+  }); // eslint-disable-line
+
+  const reset = (id: string) => { const n = { ...custom }; delete n[id]; store.updateSettings({ shortcuts: n }); };
+  const Row2 = ({ id }: { id: string }) => {
+    const a = SHORTCUT_ACTIONS.find((x) => x.id === id)!;
+    const c = bindingOf(custom, a);
+    return (
+      <div className="kb-row">
+        <span>{a.label}</span>
+        <span className="kbs">
+          {rec === id ? <span className="sub">Press the keys…</span> : c.split("+").map((x) => <span key={x} className="kbd">{x}</span>)}
+          <button className="btn sm" onClick={() => setRec(rec === id ? null : id)}>{rec === id ? "Cancel" : "Change"}</button>
+          {custom[id] && <button className="btn sm" onClick={() => reset(id)} title={`Back to ${a.def}`}>Reset</button>}
+        </span>
+      </div>
+    );
+  };
+  const nav = SHORTCUT_ACTIONS.filter((a) => a.id.startsWith("go:"));
+  const other = SHORTCUT_ACTIONS.filter((a) => !a.id.startsWith("go:"));
   return (
     <SettingsPage title="Shortcuts">
-      <div className="card"><div className="kb-grid"><R rows={LEFT} /><R rows={RIGHT} /></div></div>
+      <div className="card">
+        <div className="kb-grid">
+          <div>{nav.map((a) => <Row2 key={a.id} id={a.id} />)}</div>
+          <div>
+            {other.map((a) => <Row2 key={a.id} id={a.id} />)}
+            {FIXED.map(([t, k]) => (<div className="kb-row" key={t}><span>{t}</span><span className="kbs">{k.map((x) => <span key={x} className="kbd">{x}</span>)}</span></div>))}
+          </div>
+        </div>
+      </div>
     </SettingsPage>
   );
 }

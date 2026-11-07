@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
 import type { FriendReport, ImportReport, PcInfo } from "../lib/types";
+import { isDead } from "../lib/launcher";
 
 /** Réglages conseillés d'après la machine. */
 export function recommend(pc: PcInfo) {
@@ -38,7 +39,7 @@ export function ToolsView() {
   }
 
   // ---- Make friends
-  const bulk = accounts.filter((a) => selected.has(a.id) && !a.main && a.health !== "cookie_expired");
+  const bulk = accounts.filter((a) => selected.has(a.id) && !a.main && !isDead(a));
   const [friendBusy, setFriendBusy] = useState(false);
   const [friendRep, setFriendRep] = useState<FriendReport | null>(null);
   async function makeFriends() {

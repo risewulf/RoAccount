@@ -9,7 +9,7 @@ use crate::state::{AppState, RejoinInfo};
 use crate::{discord, launch, proc, roblox};
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub async fn run(app: AppHandle) {
     // laisse le coffre se déverrouiller et l'UI démarrer
@@ -53,6 +53,56 @@ async fn relaunch(app: &AppHandle, id: &str, settings: &Settings) -> bool {
     true
 }
 
+/// Native Windows notification (when enabled in the settings).
+pub fn desktop_notify(app: &AppHandle, settings: &Settings, title: &str, body: &str) {
+    if !settings.notify_windows {
+        return;
+    }
+    use tauri_plugin_notification::NotificationExt;
+    let _ = app.notification().builder().title(title).body(body).show();
+}
+
+/// Tells the UI about an incident (Windows notification) and sends the Discord alert, either right away or —
+/// when `alert_after_min` is set — only if the account is still not back in game after that many minutes.
+async fn incident(app: &AppHandle, settings: &Settings, id: &str, name: &str, kind: &str, text: &str, discord_on: bool) {
+    let _ = app.emit("incident", serde_json::json!({ "id": id, "name": name, "kind": kind }));
+    desktop_notify(app, settings, "RoAccount", &text.replace("**", ""));
+    if !discord_on {
+        return;
+    }
+    if settings.alert_after_min == 0 {
+        discord::notify(settings, text, true).await;
+    } else {
+        let state = app.state::<AppState>();
+        state.pending_alerts.lock().unwrap().insert(id.to_string(), (Instant::now(), text.to_string()));
+    }
+}
+
+/// Sends the deferred alerts whose delay is over and whose account is still not in game.
+async fn flush_pending(app: &AppHandle, settings: &Settings) {
+    let state = app.state::<AppState>();
+    if settings.alert_after_min == 0 {
+        state.pending_alerts.lock().unwrap().clear();
+        return;
+    }
+    let wait = Duration::from_secs(settings.alert_after_min as u64 * 60);
+    let due: Vec<(String, String)> = {
+        let m = state.pending_alerts.lock().unwrap();
+        m.iter().filter(|(_, (t, _))| t.elapsed() >= wait).map(|(id, (_, txt))| (id.clone(), txt.clone())).collect()
+    };
+    for (id, txt) in due {
+        state.pending_alerts.lock().unwrap().remove(&id);
+        let meta = state.vault.lock().unwrap().cookie_meta(&id).ok();
+        let back = match meta {
+            Some((cookie, rid, _)) => roblox::presence_detail(&cookie, rid).await.map(|a| a.kind == "InGame").unwrap_or(false),
+            None => true,
+        };
+        if !back {
+            discord::notify(settings, &format!("{txt} (still offline after {} min)", settings.alert_after_min), true).await;
+        }
+    }
+}
+
 fn username_of(state: &AppState, id: &str) -> String {
     state
         .vault
@@ -60,7 +110,7 @@ fn username_of(state: &AppState, id: &str) -> String {
         .unwrap()
         .cookie_meta(id)
         .map(|(_, _, u)| u)
-        .unwrap_or_else(|_| "compte".into())
+        .unwrap_or_else(|_| "account".into())
 }
 
 /// Détecte les clients dont la fenêtre ne répond plus (2 passes d'affilée ≈ 40 s), alerte,
@@ -98,6 +148,8 @@ async fn check_freeze(app: &AppHandle, settings: &Settings) {
     }
     for pid in to_alert {
         state.push_log("crash", format!("Client PID {pid} frozen (not responding)"));
+        let _ = app.emit("incident", serde_json::json!({ "id": "", "name": format!("PID {pid}"), "kind": "freeze" }));
+        desktop_notify(app, settings, "RoAccount", &format!("A Roblox client (PID {pid}) is not responding."));
         if settings.alert_freeze {
             discord::notify(
                 settings,
@@ -266,6 +318,7 @@ async fn tick(app: &AppHandle) {
     perf_tick(app, &settings, &procs).await;
     check_freeze(app, &settings).await;
     summary(app, &settings).await;
+    flush_pending(app, &settings).await;
 
     if !settings.auto_rejoin && !settings.auto_restart {
         return;
@@ -345,14 +398,10 @@ async fn tick(app: &AppHandle) {
             Some(true) => {
                 if crashed {
                     state.push_log("crash", format!("{username} crashed"));
-                    if settings.alert_crash {
-                        discord::notify(&settings, &format!("💥 **{username}** crashed."), true).await;
-                    }
+                    incident(app, &settings, &id, &username, "crash", &format!("💥 **{username}** crashed."), settings.alert_crash).await;
                 } else {
                     state.push_log("rejoin", format!("{username} disconnected"));
-                    if settings.alert_disconnect {
-                        discord::notify(&settings, &format!("🔌 **{username}** was disconnected."), true).await;
-                    }
+                    incident(app, &settings, &id, &username, "disconnect", &format!("🔌 **{username}** was disconnected."), settings.alert_disconnect).await;
                 }
                 relaunch(app, &id, &settings).await;
                 state.push_log("rejoin", format!("{username} — relaunched"));
@@ -372,6 +421,8 @@ async fn tick(app: &AppHandle) {
                     "crash",
                     format!("{username} — giving up after {} tries", settings.give_up_tries),
                 );
+                let _ = app.emit("incident", serde_json::json!({ "id": id, "name": username, "kind": "giveup" }));
+                desktop_notify(app, &settings, "RoAccount", &format!("{username} — giving up after {} tries", settings.give_up_tries));
                 if settings.alert_give_up {
                     discord::notify(
                         &settings,

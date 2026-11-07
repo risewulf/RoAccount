@@ -4,6 +4,7 @@ import {
 } from "react";
 import { api } from "./lib/api";
 import { DEFAULT_SETTINGS, type AccountMeta, type Settings, type ViewId } from "./lib/types";
+import { recordRobux } from "./lib/robux";
 
 interface Store {
   view: ViewId;
@@ -46,6 +47,8 @@ export function StoreProvider({ onToast, children }: { onToast: (m: string) => v
   const [accounts, setAccounts] = useState<AccountMeta[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [settings, setSettings] = useState<Settings>(loadSettings);
+  const accountsRef = useRef<AccountMeta[]>([]);
+  accountsRef.current = accounts;
   const toastRef = useRef(onToast);
   toastRef.current = onToast;
 
@@ -66,8 +69,14 @@ export function StoreProvider({ onToast, children }: { onToast: (m: string) => v
       const list = await api.listAccounts();
       for (const a of list) {
         try {
+          const before = accountsRef.current.find((x) => x.id === a.id)?.health;
           const m = await api.refreshAccount(a.id);
           setAccounts((cur) => cur.map((x) => (x.id === m.id ? m : x)));
+          recordRobux(m.id, m.robux);
+          // a cookie that just died or an account that just got banned: tell the UI (notification + Discord)
+          if ((m.health === "cookie_expired" || m.health === "banned") && before === "ok") {
+            window.dispatchEvent(new CustomEvent("roa-account-alert", { detail: { id: m.id, name: m.username, health: m.health } }));
+          }
         } catch { /* on continue malgré une erreur ponctuelle */ }
         await new Promise((r) => setTimeout(r, 250));
       }
@@ -119,6 +128,7 @@ export function StoreProvider({ onToast, children }: { onToast: (m: string) => v
   }, []);
 
   const replace = useCallback((a: AccountMeta) => {
+    recordRobux(a.id, a.robux);
     setAccounts((list) => list.map((x) => (x.id === a.id ? a : x)));
   }, []);
 

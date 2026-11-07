@@ -6,7 +6,7 @@
 //! Rien n'est jamais écrit in clear text sur le disque.
 
 use crate::error::{AppError, Result};
-use crate::models::{AccountMeta, StoredAccount, VaultStatus};
+use crate::models::{AccountMeta, StoredAccount, TrashItem, VaultStatus};
 
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -81,7 +81,7 @@ impl Vault {
         VaultStatus {
             exists: self.exists(),
             unlocked: self.unlocked,
-            count: self.accounts.len(),
+            count: self.accounts.iter().filter(|a| a.deleted_at.is_none()).count(),
         }
     }
 
@@ -133,6 +133,10 @@ impl Vault {
         self.key = Some(key);
         self.accounts = accounts;
         self.unlocked = true;
+        // forget accounts that have been in the trash for more than 7 days
+        if self.purge_old(7 * 86_400) > 0 {
+            let _ = self.persist();
+        }
         Ok(())
     }
 
@@ -186,7 +190,7 @@ impl Vault {
     // --- opérations sur les comptes ---
 
     pub fn metas(&self) -> Vec<AccountMeta> {
-        self.accounts.iter().map(AccountMeta::from).collect()
+        self.accounts.iter().filter(|a| a.deleted_at.is_none()).map(AccountMeta::from).collect()
     }
 
     pub fn cookie_for(&self, id: &str) -> Result<String> {
@@ -195,7 +199,7 @@ impl Vault {
         }
         self.accounts
             .iter()
-            .find(|a| a.id == id)
+            .find(|a| a.id == id && a.deleted_at.is_none())
             .map(|a| a.cookie.clone())
             .ok_or(AppError::AccountNotFound)
     }
@@ -207,14 +211,14 @@ impl Vault {
         }
         self.accounts
             .iter()
-            .find(|a| a.id == id)
+            .find(|a| a.id == id && a.deleted_at.is_none())
             .map(|a| (a.cookie.clone(), a.roblox_id, a.username.clone()))
             .ok_or(AppError::AccountNotFound)
     }
 
     /// Vrai si ce compte est marqué « MAIN ».
     pub fn is_main(&self, id: &str) -> bool {
-        self.accounts.iter().any(|a| a.id == id && a.main)
+        self.accounts.iter().any(|a| a.id == id && a.main && a.deleted_at.is_none())
     }
 
     /// (id, cookie, roblox_id, username) des comptes demandés, dans l'ordre demandé.
@@ -222,7 +226,7 @@ impl Vault {
     /// un compte MAIN choisi à la main doit se lancer.
     pub fn bulk_targets(&self, ids: &[String]) -> Vec<(String, String, u64, String)> {
         ids.iter()
-            .filter_map(|id| self.accounts.iter().find(|a| &a.id == id))
+            .filter_map(|id| self.accounts.iter().find(|a| &a.id == id && a.deleted_at.is_none()))
             .map(|a| (a.id.clone(), a.cookie.clone(), a.roblox_id, a.username.clone()))
             .collect()
     }
@@ -240,6 +244,7 @@ impl Vault {
             existing.cookie = account.cookie.clone();
             existing.username = account.username.clone();
             existing.display_name = account.display_name.clone();
+            existing.deleted_at = None; // re-adding a trashed account brings it back
             let meta = AccountMeta::from(&*existing);
             self.persist()?;
             return Ok(meta);
@@ -250,16 +255,71 @@ impl Vault {
         Ok(meta)
     }
 
+    /// Moves the account to the trash (kept, encrypted, for 7 days).
     pub fn remove(&mut self, id: &str) -> Result<()> {
         if !self.unlocked {
             return Err(AppError::VaultLocked);
         }
-        let before = self.accounts.len();
-        self.accounts.retain(|a| a.id != id);
-        if self.accounts.len() == before {
-            return Err(AppError::AccountNotFound);
-        }
+        let a = self
+            .accounts
+            .iter_mut()
+            .find(|a| a.id == id && a.deleted_at.is_none())
+            .ok_or(AppError::AccountNotFound)?;
+        a.deleted_at = Some(now_secs());
         self.persist()
+    }
+
+    pub fn trash(&self) -> Vec<TrashItem> {
+        self.accounts
+            .iter()
+            .filter_map(|a| {
+                a.deleted_at.map(|t| TrashItem {
+                    id: a.id.clone(),
+                    username: a.username.clone(),
+                    display_name: a.display_name.clone(),
+                    deleted_at: t,
+                })
+            })
+            .collect()
+    }
+
+    pub fn restore(&mut self, id: &str) -> Result<AccountMeta> {
+        if !self.unlocked {
+            return Err(AppError::VaultLocked);
+        }
+        let a = self
+            .accounts
+            .iter_mut()
+            .find(|a| a.id == id && a.deleted_at.is_some())
+            .ok_or(AppError::AccountNotFound)?;
+        a.deleted_at = None;
+        let meta = AccountMeta::from(&*a);
+        self.persist()?;
+        Ok(meta)
+    }
+
+    /// Permanently deletes one trashed account (or all of them when `id` is None).
+    pub fn purge(&mut self, id: Option<&str>) -> Result<()> {
+        if !self.unlocked {
+            return Err(AppError::VaultLocked);
+        }
+        self.accounts.retain(|a| match (a.deleted_at, id) {
+            (Some(_), None) => false,
+            (Some(_), Some(i)) => a.id != i,
+            _ => true,
+        });
+        self.persist()
+    }
+
+    /// Drops accounts trashed more than `max_age_secs` ago. Returns how many were dropped.
+    fn purge_old(&mut self, max_age_secs: u64) -> usize {
+        let now = now_secs();
+        let before = self.accounts.len();
+        self.accounts.retain(|a| match a.deleted_at {
+            Some(t) => now.saturating_sub(t) <= max_age_secs,
+            None => true,
+        });
+        before - self.accounts.len()
     }
 
     pub fn update_fields(
@@ -271,6 +331,7 @@ impl Vault {
         favorite: Option<bool>,
         color: Option<String>,
         main: Option<bool>,
+        tags: Option<Vec<String>>,
     ) -> Result<AccountMeta> {
         if !self.unlocked {
             return Err(AppError::VaultLocked);
@@ -278,8 +339,16 @@ impl Vault {
         let a = self
             .accounts
             .iter_mut()
-            .find(|a| a.id == id)
+            .find(|a| a.id == id && a.deleted_at.is_none())
             .ok_or(AppError::AccountNotFound)?;
+        if let Some(t) = tags {
+            a.tags = t
+                .into_iter()
+                .map(|x| x.trim().to_string())
+                .filter(|x| !x.is_empty())
+                .take(12)
+                .collect();
+        }
         if let Some(g) = group {
             a.group = g;
         }
@@ -302,4 +371,11 @@ impl Vault {
         self.persist()?;
         Ok(meta)
     }
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }

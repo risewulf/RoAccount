@@ -49,12 +49,14 @@ pub struct AppState {
     /// Dernier lancement de chaque compte : un client qui vient de démarrer a un délai de grâce
     /// (fenêtre « ne répond pas » pendant le chargement, présence Roblox pas encore up to date).
     pub launched_at: Mutex<HashMap<String, Instant>>,
+    /// Deferred Discord alerts (account -> when the incident happened, message): sent only if the account is still not back after `alert_after_min`.
+    pub pending_alerts: Mutex<HashMap<String, (Instant, String)>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         AppState {
-            vault: Mutex::new(Vault::new().expect("init du coffre")),
+            vault: Mutex::new(Vault::new().expect("vault init")),
             running: Mutex::new(HashSet::new()),
             settings: Mutex::new(settings::load()),
             rejoin: Mutex::new(HashMap::new()),
@@ -67,6 +69,7 @@ impl AppState {
             last_summary: Mutex::new(None),
             cancel_batch: AtomicBool::new(false),
             launched_at: Mutex::new(HashMap::new()),
+            pending_alerts: Mutex::new(HashMap::new()),
         }
     }
 

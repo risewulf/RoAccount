@@ -1,6 +1,9 @@
 import type { AccountMeta } from "../lib/types";
 
 export function StatusPill({ account }: { account: AccountMeta }) {
+  if (account.health === "banned") {
+    return <span className="pill cookie"><span className="dot" style={{ background: "var(--crit)" }} />Banned</span>;
+  }
   if (account.health === "cookie_expired") {
     return <span className="pill cookie"><span className="dot" style={{ background: "var(--crit)" }} />Cookie expired</span>;
   }

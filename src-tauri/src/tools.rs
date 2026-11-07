@@ -15,7 +15,7 @@ pub fn pc_info() -> PcInfo {
         cpu_threads: sys.cpus().len().max(1),
         ram_total_mb: mb(sys.total_memory()),
         ram_free_mb: mb(sys.available_memory()),
-        os: System::long_os_version().unwrap_or_else(|| "inconnu".into()),
+        os: System::long_os_version().unwrap_or_else(|| "unknown".into()),
     }
 }
 

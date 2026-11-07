@@ -106,6 +106,18 @@ function NewsTab() {
 /* Overview                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Mosaic view: just the live previews of every client, side by side. Click one to bring its window forward. */
+function MosaicTile({ a, m }: { a: AccountMeta; m?: ClientMetric }) {
+  const store = useStore();
+  const img = usePreview(m?.pid ?? null, store.settings.previewFps, !!m);
+  return (
+    <button className="mtile" disabled={!m} onClick={() => m && void api.windowAction(m.pid, "show").catch((e) => store.toast(String(e)))} title="Show this window">
+      {img ? <img src={img} alt={`Preview of ${a.username}`} /> : <div className="none">{m ? "Capturing…" : "No preview"}</div>}
+      <span className="cap"><b>{a.alias || a.username}</b><span>{m ? fmtDuration(m.uptime_s) : "—"}</span></span>
+    </button>
+  );
+}
+
 function ClientCard({ a, m, detailed }: { a: AccountMeta; m?: ClientMetric; detailed: boolean }) {
   const store = useStore();
   const { settings } = store;
@@ -165,7 +177,8 @@ function Overview() {
   const { metrics } = useMetrics(2000, true);
   const playing = accounts.filter((a) => a.running || a.presence === "InGame");
   const byId = new Map((metrics?.clients ?? []).filter((c) => c.account_id).map((c) => [c.account_id!, c]));
-  const detailed = settings.homeView === "detailed";
+  const mosaic = settings.homeView === "mosaic";
+  const detailed = settings.homeView === "detailed" || mosaic;
 
   // clients fermés ou plantés récemment (dernier événement = fermeture, il y a moins d'une heure)
   const crashed = useMemo(() => {
@@ -211,8 +224,9 @@ function Overview() {
         <span style={{ flex: 1 }} />
         <span className="tgl">Anti-AFK <Toggle on={settings.antiAfk} label="Anti-AFK" onChange={(v) => store.updateSettings({ antiAfk: v })} /></span>
         <div className="seg">
-          <button className={detailed ? "on" : ""} onClick={() => store.updateSettings({ homeView: "detailed" })}>Detailed</button>
+          <button className={detailed && !mosaic ? "on" : ""} onClick={() => store.updateSettings({ homeView: "detailed" })}>Detailed</button>
           <button className={!detailed ? "on" : ""} onClick={() => store.updateSettings({ homeView: "compact" })}>Compact</button>
+          <button className={mosaic ? "on" : ""} onClick={() => store.updateSettings({ homeView: "mosaic" })}>Mosaic</button>
         </div>
         <button className="icon-btn" title="Tile the windows" aria-label="Tile the windows" onClick={() => void api.arrangeWindows(settings.windowLayout).catch((e) => store.toast(String(e)))}><IconGrid /></button>
         <button className="icon-btn" title="Minimize all" aria-label="Minimize all" onClick={() => void api.windowAction(null, "minimize").catch((e) => store.toast(String(e)))}><IconShrink /></button>
@@ -225,8 +239,8 @@ function Overview() {
           <button className="btn primary" onClick={() => store.setView("jouer")}>Launch accounts</button>
         </div>
       ) : (
-        <div className={"clients" + (detailed ? "" : " compact")}>
-          {playing.map((a) => <ClientCard key={a.id} a={a} m={byId.get(a.id)} detailed={detailed} />)}
+        <div className={"clients" + (detailed ? "" : " compact") + (mosaic ? " mosaic" : "")}>
+          {playing.map((a) => mosaic ? <MosaicTile key={a.id} a={a} m={byId.get(a.id)} /> : <ClientCard key={a.id} a={a} m={byId.get(a.id)} detailed={detailed} />)}
         </div>
       )}
     </>

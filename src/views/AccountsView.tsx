@@ -6,10 +6,13 @@ import { Avatar } from "../components/Avatar";
 import { RevealCookieModal } from "../components/RevealCookieModal";
 import { Toggle } from "../components/Controls";
 import { IconCheck, IconKey, IconPlay, IconPlus, IconRefresh, IconSearch, IconTrash, IconUpload } from "../components/icons";
+import { RobuxChart } from "../components/RobuxChart";
+import { TrashDialog } from "../components/TrashDialog";
 
 export const TAG_COLORS = ["", "#ff2d46", "#ff9f43", "#3ddc84", "#5aa9ff", "#a06cff", "#ff6ad5"];
 
 export function statusLine(a: AccountMeta): { text: string; color: string } {
+  if (a.health === "banned") return { text: "Banned by Roblox", color: "var(--crit)" };
   if (a.health === "cookie_expired") return { text: "Disconnected — check it", color: "var(--warn)" };
   if (a.presence === "InGame") return { text: a.game ? `In game · ${a.game}` : "In game", color: "var(--ok)" };
   if (a.presence === "Online") return { text: "Online", color: "var(--info)" };
@@ -59,7 +62,7 @@ export function AccountPanel({ account, groups, wide }: { account: AccountMeta |
     } catch (e) { store.toast(String(e)); } finally { setBusy(false); }
   }
   async function remove() {
-    try { await api.removeAccount(a.id); store.dropAccount(a.id); store.setCurrent(null); store.toast("Account removed."); }
+    try { await api.removeAccount(a.id); store.dropAccount(a.id); store.setCurrent(null); store.toast("Moved to the trash — you can restore it for 7 days."); }
     catch (e) { store.toast(String(e)); }
   }
 
@@ -109,6 +112,8 @@ export function AccountPanel({ account, groups, wide }: { account: AccountMeta |
               <div><div className="k">Group</div><div className="v" style={{ fontSize: 14 }}>{a.group}</div></div>
             </div>
           </div>
+          {(a.tags ?? []).length > 0 && <div className="psec"><div className="tagrow">{(a.tags ?? []).map((t) => <span key={t} className="tag">{t}</span>)}</div></div>}
+          <RobuxChart id={a.id} current={a.robux} />
           {a.note && <div className="psec"><div className="k">Note</div><div className="note-box">{a.note}</div></div>}
           <div className="act-row">
             <button className="btn primary" disabled={busy} onClick={() => void launch()}><IconPlay />Launch</button>
@@ -140,6 +145,15 @@ export function AccountPanel({ account, groups, wide }: { account: AccountMeta |
             <div className="k">Note</div>
             <textarea className="code" style={{ minHeight: 80 }} value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => note !== a.note && void update({ note })} />
           </div>
+          <TagsEditor tags={a.tags ?? []} onChange={(tags) => void update({ tags })} />
+          <div className="psec">
+            <div className="k">Extra launch delay</div>
+            <div className="inline">
+              <input className="txt" type="number" min={0} max={600} style={{ width: 90 }} value={store.settings.accountDelays?.[a.id] ?? 0}
+                onChange={(e) => { const n = Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0))); const d = { ...(store.settings.accountDelays ?? {}) }; if (n) d[a.id] = n; else delete d[a.id]; store.updateSettings({ accountDelays: d }); }} aria-label="Extra launch delay" />
+              <span className="sub">s before this account starts in a batch</span>
+            </div>
+          </div>
           <div className="psec">
             <div className="srow" style={{ padding: 0, border: 0 }}>
               <div className="l"><b>MAIN account</b><small>Left out of batches, “Make friends” and auto-rejoin.</small></div>
@@ -160,8 +174,8 @@ export function AccountPanel({ account, groups, wide }: { account: AccountMeta |
               <button className="btn danger" onClick={() => setConfirmDel(true)}><IconTrash />Remove this account</button>
             ) : (
               <div className="inline">
-                <span className="hint">Remove {a.username} du coffre ?</span>
-                <button className="btn sm danger" onClick={() => void remove()}>Yes, remove</button>
+                <span className="hint">Move {a.username} to the trash? You can restore it for 7 days.</span>
+                <button className="btn sm danger" onClick={() => void remove()}>Yes, move to trash</button>
                 <button className="btn sm" onClick={() => setConfirmDel(false)}>Cancel</button>
               </div>
             )}
@@ -171,6 +185,22 @@ export function AccountPanel({ account, groups, wide }: { account: AccountMeta |
 
       {reveal && <RevealCookieModal account={a} onClose={() => setReveal(false)} />}
     </aside>
+  );
+}
+
+/** Free-form tags (farm, trade, alt…): type one and press Enter. */
+function TagsEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+  const [v, setV] = useState("");
+  const add = () => { const t = v.trim().toLowerCase().slice(0, 20); if (t && !tags.includes(t)) onChange([...tags, t]); setV(""); };
+  return (
+    <div className="psec">
+      <div className="k">Tags</div>
+      <div className="tagrow" style={{ marginBottom: 8 }}>
+        {tags.map((t) => <span key={t} className="tag">{t}<button className="tag-x" onClick={() => onChange(tags.filter((x) => x !== t))} aria-label={`Remove ${t}`}>×</button></span>)}
+        {tags.length === 0 && <span className="sub">No tags yet.</span>}
+      </div>
+      <input className="txt" value={v} placeholder="farm, trade, alt…" onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }} onBlur={add} />
+    </div>
   );
 }
 
@@ -185,6 +215,8 @@ export function AccountsView() {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("All");
   const [state, setState] = useState<"all" | "ingame" | "offline" | "check">("all");
+  const [tag, setTag] = useState("All");
+  const [trash, setTrash] = useState(false);
   const [custom, setCustom] = useState<string[]>(loadGroups);
   const [newGroup, setNewGroup] = useState(false);
   const [gname, setGname] = useState("");
@@ -209,13 +241,15 @@ export function AccountsView() {
     return [...accounts]
       .filter((a) => {
         if (group !== "All" && a.group !== group) return false;
+        if (tag !== "All" && !(a.tags ?? []).includes(tag)) return false;
         if (state === "ingame" && a.presence !== "InGame") return false;
         if (state === "offline" && a.presence === "InGame") return false;
         if (state === "check" && a.health !== "cookie_expired") return false;
         return !q || (a.username + " " + a.display_name + " " + a.alias).toLowerCase().includes(q);
       })
       .sort((x, y) => (Number(y.main) - Number(x.main)) || (Number(y.favorite) - Number(x.favorite)) || x.username.localeCompare(y.username));
-  }, [accounts, query, group, state]);
+  }, [accounts, query, group, state, tag]);
+  const allTags = useMemo(() => [...new Set(accounts.flatMap((a) => a.tags ?? []))].sort(), [accounts]);
 
   const cur = accounts.find((a) => a.id === current) ?? (side ? null : filtered[0] ?? null);
   const expired = accounts.filter((a) => a.health === "cookie_expired").length;
@@ -308,6 +342,7 @@ export function AccountsView() {
         </div>
         <div className="inline">
           <button className="btn" disabled={busy} onClick={() => void checkAll()}><IconRefresh />Check all</button>
+          <button className="btn" onClick={() => setTrash(true)}><IconTrash />Trash</button>
           <button className="btn" onClick={() => store.setView("outils")}><IconUpload />Export cookies…</button>
           <button className="btn solid" onClick={() => store.setAddOpen(true)}><IconPlus />Add account</button>
         </div>
@@ -329,6 +364,12 @@ export function AccountsView() {
               <option value="offline">Not playing</option>
               <option value="check">To check</option>
             </select>
+            {allTags.length > 0 && (
+              <select className="sort-select" value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tag">
+                <option value="All">Tag: all</option>
+                {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
           </div>
           <div className="chips" style={{ marginBottom: 16 }}>
             <button className={"chip" + (group === "All" ? " on" : "")} onClick={() => setGroup("All")}>All</button>
@@ -411,6 +452,7 @@ export function AccountsView() {
         </>
       )}
 
+      {trash && <TrashDialog onClose={() => setTrash(false)} />}
       {report && (
         <div className="overlay" onClick={() => setReport(null)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>

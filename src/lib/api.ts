@@ -1,8 +1,9 @@
 import {
   DEFAULT_SETTINGS, type AccountMeta, type BackupInfo, type FriendReport, type ImportReport, type LogEntry,
   type MacroInfo, type Metrics, type NewsItem, type PcInfo, type PrivateServer, type ProcInfo, type RobloxVersion,
-  type RunningMacro, type ServerInfo, type Settings, type VaultStatus,
+  type RunningMacro, type ServerInfo, type Settings, type TrashItem, type VaultStatus,
 } from "./types";
+import { seedDemoRobux } from "./robux";
 
 /**
  * Couche d'accès au backend.
@@ -43,10 +44,22 @@ export const api = {
   removeAccount: (id: string) => invoke<void>("remove_account", { id }),
   updateAccount: (
     id: string,
-    patch: Partial<Pick<AccountMeta, "group" | "alias" | "note" | "favorite" | "color" | "main">>
+    patch: Partial<Pick<AccountMeta, "group" | "alias" | "note" | "favorite" | "color" | "main" | "tags">>
   ) => invoke<AccountMeta>("update_account", { id, ...patch }),
   refreshAccount: (id: string) =>
     invoke<AccountMeta>("refresh_account", { id }),
+  listTrash: () => invoke<TrashItem[]>("list_trash"),
+  restoreAccount: (id: string) => invoke<AccountMeta>("restore_account", { id }),
+  /** Deletes one trashed account for good, or the whole trash when no id is given. */
+  purgeTrash: (id?: string) => invoke<void>("purge_trash", { id: id ?? null }),
+  discordPost: (message: string) => invoke<void>("discord_post", { message }),
+  notifyDesktop: (title: string, body: string) => invoke<void>("notify_desktop", { title, body }),
+  /** Incidents detected by the background loop (crash, disconnect, freeze, give-up). */
+  onIncident: async (cb: (e: { id: string; name: string; kind: string }) => void): Promise<() => void> => {
+    if (!inTauri) return () => {};
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<{ id: string; name: string; kind: string }>("incident", (e) => cb(e.payload));
+  },
 
   launchAccount: (id: string, target: string) =>
     invoke<void>("launch_account", { id, target }),
@@ -170,6 +183,10 @@ const mockAccounts: AccountMeta[] = [
   demo("LunaBuilds", "Luna", "Main", { fav: true, pres: "Online", robux: 5320, friends: 311 }),
   demo("RocketReal", "Rocket", "Alts", { pres: "Offline", robux: 40, friends: 18, health: "cookie_expired" }),
 ];
+
+const mockTrash: TrashItem[] = [];
+const mockTrashed: AccountMeta[] = [];
+if (!inTauri) mockAccounts.forEach((a) => seedDemoRobux(a.id, a.robux ?? 0));
 
 let mockUnlocked = false;
 const mockMacros: MacroInfo[] = [
@@ -392,9 +409,27 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return undefined as T;
     case "remove_account": {
       const i = mockAccounts.findIndex((a) => a.id === args?.id);
-      if (i >= 0) mockAccounts.splice(i, 1);
+      if (i >= 0) { const [a] = mockAccounts.splice(i, 1); mockTrash.push({ id: a.id, username: a.username, display_name: a.display_name, deleted_at: Date.now() / 1000 }); mockTrashed.push(a); }
       return undefined as T;
     }
+    case "list_trash":
+      return [...mockTrash] as T;
+    case "restore_account": {
+      const i = mockTrashed.findIndex((a) => a.id === args?.id);
+      if (i < 0) throw "account not found";
+      const [a] = mockTrashed.splice(i, 1);
+      mockTrash.splice(mockTrash.findIndex((t) => t.id === a.id), 1);
+      mockAccounts.push(a);
+      return { ...a } as T;
+    }
+    case "purge_trash": {
+      if (args?.id) { mockTrash.splice(mockTrash.findIndex((t) => t.id === args.id), 1); mockTrashed.splice(mockTrashed.findIndex((t) => t.id === args.id), 1); }
+      else { mockTrash.length = 0; mockTrashed.length = 0; }
+      return undefined as T;
+    }
+    case "discord_post":
+    case "notify_desktop":
+      return undefined as T;
     case "update_account": {
       const a = mockAccounts.find((x) => x.id === args?.id)!;
       Object.assign(a, args);

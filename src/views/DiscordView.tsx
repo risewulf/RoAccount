@@ -11,6 +11,7 @@ const EVENTS: { k: keyof Settings; title: string; desc: string }[] = [
   { k: "alertDisconnect", title: "Disconnections", desc: "Roblox kicked a client, its server closed or the connection was lost." },
   { k: "alertRestart", title: "Rejoins and restarts", desc: "Auto-rejoin or auto-restart relaunched an account." },
   { k: "alertMemRestart", title: "Memory restarts", desc: "A client was restarted because it used too much memory." },
+  { k: "alertDeadCookie", title: "Expired cookie or ban", desc: "An account's cookie stopped working, or Roblox banned the account." },
   { k: "alertGiveUp", title: "Give up", desc: "RoAccount stopped relaunching an account after too many tries." },
   { k: "alertBatch", title: "Batch finished", desc: "How many accounts of a batch got in game." },
   { k: "alertSummary", title: "Status summary", desc: "How many clients are running, with their RAM and CPU." },
@@ -54,6 +55,20 @@ export function DiscordView() {
             <Toggle on={settings[e.k] as boolean} label={e.title} onChange={(v) => store.updateSettings({ [e.k]: v } as Partial<Settings>)} />
           </Row>
         ))}
+      </div>
+
+      <h2 className="group-title">Smarter alerts</h2>
+      <div className="card">
+        <Row title="Crash and disconnect alerts" desc="Only alert if the account is still not back in game after this delay. 0 alerts right away.">
+          <NumInput value={settings.alertAfterMin} onChange={(n) => store.updateSettings({ alertAfterMin: n })} min={0} max={120} width={70} /><span className="sub">min</span>
+        </Row>
+        <Row title="Windows notifications" desc="A native notification on this PC for crashes, freezes, give-ups, expired cookies and bans.">
+          <Toggle on={settings.notifyWindows} label="Windows notifications" onChange={(v) => store.updateSettings({ notifyWindows: v })} />
+        </Row>
+        <Row title="Daily summary" desc="One message a day: play time, launches, closures and incidents.">
+          {settings.dailySummary && (<><span className="sub">at</span><NumInput value={settings.dailySummaryHour} onChange={(n) => store.updateSettings({ dailySummaryHour: Math.min(23, n) })} min={0} max={23} width={64} /><span className="sub">h</span></>)}
+          <Toggle on={settings.dailySummary} label="Daily summary" onChange={(v) => store.updateSettings({ dailySummary: v })} />
+        </Row>
       </div>
     </div>
   );

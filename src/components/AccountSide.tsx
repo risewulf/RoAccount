@@ -33,7 +33,7 @@ export function AccountSide() {
       </button>
       <div className="as-list">
         {list.map((a) => {
-          const sub = a.health === "cookie_expired" ? "To check" : a.presence === "InGame" ? "In game" : a.running ? "Signing in…" : `@${a.username}`;
+          const sub = a.health === "banned" ? "Banned" : a.health === "cookie_expired" ? "To check" : a.presence === "InGame" ? "In game" : a.running ? "Signing in…" : `@${a.username}`;
           return (
             <button key={a.id} className={"as-item" + (view === "comptes" && current === a.id ? " on" : "")} onClick={() => { store.setCurrent(a.id); store.setView("comptes"); }}>
               <Avatar account={a} size={38} />
