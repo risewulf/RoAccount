@@ -30,6 +30,47 @@ pub struct Settings {
     pub private_link: String,
     /// Chemin de AutoHotkey v2 (vide = détection automatique).
     pub ahk_path: String,
+
+    // --- récupération -------------------------------------------------------
+    /// Relance un client qui a crashé ou qui est figé.
+    pub auto_restart: bool,
+    /// Abandon d'un compte après N essais en M minutes.
+    pub give_up_tries: u32,
+    pub give_up_minutes: u32,
+    /// Temps laissé à un client pour se fermer seul avant d'être arrêté de force (s).
+    pub close_delay_secs: u64,
+    /// Fermer la fenêtre la réduit dans la zone de notification (sinon : quitte).
+    pub close_to_tray: bool,
+    /// Multi-instance Roblox (verrou ROBLOX_singletonEvent tenu par RoAccount). Pris en compte au démarrage.
+    pub multi_instance: bool,
+
+    // --- alertes Discord supplémentaires ------------------------------------
+    pub alert_launch: bool,
+    pub alert_restart: bool,
+    pub alert_mem_restart: bool,
+    pub alert_give_up: bool,
+    pub alert_summary: bool,
+    pub summary_every_min: u32,
+
+    // --- performances (moteur côté Rust) ------------------------------------
+    /// Baisse la priorité des clients qui ne sont pas au premier plan.
+    pub adaptive_limits: bool,
+    /// Répartit les clients sur les cœurs du processeur.
+    pub spread_cores: bool,
+    /// Décharge régulièrement la mémoire des clients sur le disque.
+    pub trim_memory: bool,
+    pub trim_every_min: u32,
+    /// Bride (priorité basse) un client au-delà de cette mémoire (Mo).
+    pub throttle_mem: bool,
+    pub throttle_mem_mb: u64,
+    /// Relance un client au-delà de cette mémoire (Mo).
+    pub restart_mem: bool,
+    pub restart_mem_mb: u64,
+
+    /// Tous les réglages purement visuels du front (thème, accent, disposition…)
+    /// sont conservés tels quels ici, sans que Rust ait besoin de les connaître.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Default for Settings {
@@ -38,7 +79,7 @@ impl Default for Settings {
             target: "roblox.com/games/920587237/Adopt-Me".into(),
             same_server: true,
             cooldown_ms: 6000,
-            auto_rejoin: true,
+            auto_rejoin: false,
             discord_webhook: String::new(),
             alert_crash: true,
             alert_disconnect: true,
@@ -50,6 +91,27 @@ impl Default for Settings {
             server_mode: "same".into(),
             private_link: String::new(),
             ahk_path: String::new(),
+            auto_restart: false,
+            give_up_tries: 3,
+            give_up_minutes: 10,
+            close_delay_secs: 5,
+            close_to_tray: true,
+            multi_instance: true,
+            alert_launch: false,
+            alert_restart: true,
+            alert_mem_restart: true,
+            alert_give_up: true,
+            alert_summary: false,
+            summary_every_min: 30,
+            adaptive_limits: false,
+            spread_cores: false,
+            trim_memory: false,
+            trim_every_min: 10,
+            throttle_mem: false,
+            throttle_mem_mb: 2500,
+            restart_mem: false,
+            restart_mem_mb: 3500,
+            extra: serde_json::Map::new(),
         }
     }
 }

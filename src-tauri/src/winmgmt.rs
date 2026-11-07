@@ -172,10 +172,72 @@ mod win {
         }
         changed
     }
+
+    /// Affiche (restaure + premier plan) ou réduit les fenêtres des PID donnés.
+    pub fn show_windows(pids: Vec<u32>, minimize: bool) -> usize {
+        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, SW_MINIMIZE};
+        let wins = windows_of(pids);
+        let n = wins.len();
+        unsafe {
+            for (hwnd, _) in wins {
+                if minimize {
+                    let _ = ShowWindow(hwnd, SW_MINIMIZE);
+                } else {
+                    let _ = ShowWindow(hwnd, SW_RESTORE);
+                    let _ = SetForegroundWindow(hwnd);
+                }
+            }
+        }
+        n
+    }
+
+    /// PID du process qui possède la fenêtre au premier plan.
+    pub fn foreground_pid() -> u32 {
+        use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            pid
+        }
+    }
+
+    /// Décharge la mémoire de travail d'un process sur le disque.
+    pub fn trim_memory(pid: u32) -> bool {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::ProcessStatus::EmptyWorkingSet;
+        use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_SET_QUOTA};
+        unsafe {
+            match OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, pid) {
+                Ok(h) => {
+                    let ok = EmptyWorkingSet(h).is_ok();
+                    let _ = CloseHandle(h);
+                    ok
+                }
+                Err(_) => false,
+            }
+        }
+    }
+
+    /// Limite un process à certains cœurs (masque de bits).
+    pub fn set_affinity(pid: u32, mask: usize) -> bool {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Threading::{OpenProcess, SetProcessAffinityMask, PROCESS_SET_INFORMATION};
+        unsafe {
+            match OpenProcess(PROCESS_SET_INFORMATION, false, pid) {
+                Ok(h) => {
+                    let ok = SetProcessAffinityMask(h, mask).is_ok();
+                    let _ = CloseHandle(h);
+                    ok
+                }
+                Err(_) => false,
+            }
+        }
+    }
 }
 
 #[cfg(windows)]
-pub use win::{arrange, hung_pids, mute_pids, set_priority};
+pub use win::{arrange, foreground_pid, hung_pids, mute_pids, set_affinity, set_priority, show_windows, trim_memory};
 
 #[cfg(not(windows))]
 pub fn arrange(_pids: Vec<u32>, _layout: &str) {}
@@ -189,5 +251,21 @@ pub fn mute_pids(_pids: &[u32], _mute: bool) -> usize {
 }
 #[cfg(not(windows))]
 pub fn set_priority(_pid: u32, _level: &str) -> bool {
+    false
+}
+#[cfg(not(windows))]
+pub fn show_windows(_pids: Vec<u32>, _minimize: bool) -> usize {
+    0
+}
+#[cfg(not(windows))]
+pub fn foreground_pid() -> u32 {
+    0
+}
+#[cfg(not(windows))]
+pub fn trim_memory(_pid: u32) -> bool {
+    false
+}
+#[cfg(not(windows))]
+pub fn set_affinity(_pid: u32, _mask: usize) -> bool {
     false
 }

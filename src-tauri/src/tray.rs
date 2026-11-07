@@ -32,10 +32,12 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => show_main(app),
             "killall" => {
-                let _ = launch::kill_all();
                 let state = app.state::<AppState>();
+                let delay = state.settings.lock().unwrap().close_delay_secs;
+                let _ = launch::kill_all(delay);
                 state.running.lock().unwrap().clear();
                 state.rejoin.lock().unwrap().clear();
+                state.pids.lock().unwrap().clear();
             }
             "quit" => app.exit(0),
             _ => {}

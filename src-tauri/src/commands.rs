@@ -16,8 +16,9 @@ use crate::settings::Settings;
 use crate::state::AppState;
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use uuid::Uuid;
 
 #[tauri::command]
@@ -384,6 +385,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Settings {
 /// Enregistre les réglages (mémoire + disque).
 #[tauri::command]
 pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Settings {
+    crate::launch::set_extra_args(settings.extra.get("launchArgs").and_then(|v| v.as_str()).unwrap_or(""));
     *state.settings.lock().unwrap() = settings.clone();
     crate::settings::save(&settings);
     settings
@@ -392,6 +394,7 @@ pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Settings
 /// Lance un compte sur une cible.
 #[tauri::command]
 pub async fn launch_account(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     target: String,
@@ -401,11 +404,37 @@ pub async fn launch_account(
         let (c, _r, u) = v.cookie_meta(&id)?;
         (c, u)
     };
+    let before = current_pids();
     launch::launch(&cookie, &target).await?;
     state.running.lock().unwrap().insert(id.clone());
     state.rejoin.lock().unwrap().remove(&id);
     state.push_log("launch", format!("{username} lancé"));
+
+    // repère le PID du nouveau client en arrière-plan (Monitor par compte)
+    let track_id = id.clone();
+    tauri::async_runtime::spawn(async move {
+        let st = app.state::<AppState>();
+        track_pid(&st, &track_id, &before, 25).await;
+    });
     Ok(())
+}
+
+/// Repère le nouveau client Roblox apparu après `before` et l'associe au compte `id`.
+pub async fn track_pid(state: &AppState, id: &str, before: &HashSet<u32>, max_secs: u64) {
+    let known: HashSet<u32> = state.pids.lock().unwrap().values().cloned().collect();
+    for _ in 0..(max_secs * 2) {
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let found = tokio::task::spawn_blocking(proc::roblox_processes)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| p.pid)
+            .find(|p| !before.contains(p) && !known.contains(p));
+        if let Some(pid) = found {
+            state.pids.lock().unwrap().insert(id.to_string(), pid);
+            return;
+        }
+    }
 }
 
 /// PID Roblox actuels (avant un lot, pour ne couper que les nouveaux clients).
@@ -451,6 +480,7 @@ async fn launch_one(cookie: &str, target: &str, place_id: u64, dest: &Dest) -> R
 /// Cœur des lancements en lot. Le compte MAIN est toujours exclu.
 /// `mode` : "same" | "random" | "closest" | "private".
 async fn run_batch(
+    app: &AppHandle,
     state: &AppState,
     ids: Vec<String>,
     target: &str,
@@ -461,6 +491,13 @@ async fn run_batch(
     let targets = { state.vault.lock().unwrap().bulk_targets(&ids) };
     if targets.is_empty() {
         return Ok(Vec::new());
+    }
+    state.cancel_batch.store(false, Ordering::SeqCst);
+    let emit = |id: &str, stage: &str, err: Option<&str>| {
+        let _ = app.emit("batch", serde_json::json!({ "id": id, "stage": stage, "error": err }));
+    };
+    for (id, ..) in targets.iter() {
+        emit(id, "queued", None);
     }
     let n = targets.len();
     let settings = { state.settings.lock().unwrap().clone() };
@@ -500,14 +537,35 @@ async fn run_batch(
     let mut launched = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     for (i, (id, cookie, _rid, username)) in targets.iter().enumerate() {
+        if state.cancel_batch.load(Ordering::SeqCst) {
+            emit(id, "cancelled", None);
+            continue;
+        }
+        let before = current_pids();
+        let started = Instant::now();
+        emit(id, "ticket", None);
         match launch_one(cookie, target, place_id, &dests[i]).await {
             Ok(()) => {
+                emit(id, "run", None);
                 state.running.lock().unwrap().insert(id.clone());
                 state.rejoin.lock().unwrap().remove(id); // repart à zéro pour l'auto-rejoin
                 launched.push(id.clone());
-                tokio::time::sleep(Duration::from_millis(wait_ms)).await;
+                // associe le nouveau client à ce compte (Monitor par compte)
+                track_pid(state, id, &before, 25).await;
+                emit(id, "join", None);
+                if settings.alert_launch {
+                    crate::discord::notify(&settings, &format!("🚀 **{username}** est entré en jeu."), false).await;
+                }
+                let spent = started.elapsed();
+                let wait = Duration::from_millis(wait_ms);
+                if spent < wait {
+                    tokio::time::sleep(wait - spent).await;
+                }
             }
-            Err(e) => errors.push(format!("{username} : {e}")),
+            Err(e) => {
+                emit(id, "failed", Some(&e.to_string()));
+                errors.push(format!("{username} : {e}"));
+            }
         }
     }
 
@@ -540,18 +598,20 @@ async fn run_batch(
 /// Lance plusieurs comptes sur la même cible, l'un après l'autre.
 #[tauri::command]
 pub async fn launch_batch(
+    app: AppHandle,
     state: State<'_, AppState>,
     ids: Vec<String>,
     target: String,
     cooldown_ms: Option<u64>,
 ) -> Result<Vec<String>> {
-    run_batch(&state, ids, &target, "same", "", cooldown_ms.unwrap_or(6000)).await
+    run_batch(&app, &state, ids, &target, "same", "", cooldown_ms.unwrap_or(6000)).await
 }
 
 /// Lance un lot avec un mode serveur : "same", "random" (un serveur public au hasard par compte),
 /// "closest" (les serveurs au ping le plus bas, un par compte) ou "private" (lien de serveur privé).
 #[tauri::command]
 pub async fn launch_batch_servers(
+    app: AppHandle,
     state: State<'_, AppState>,
     ids: Vec<String>,
     target: String,
@@ -560,6 +620,7 @@ pub async fn launch_batch_servers(
     cooldown_ms: Option<u64>,
 ) -> Result<Vec<String>> {
     run_batch(
+        &app,
         &state,
         ids,
         &target,
@@ -604,12 +665,16 @@ pub async fn follow_user(
     Ok(launched)
 }
 
-/// Arrête tous les clients Roblox.
+/// Arrête tous les clients Roblox (fermeture douce, puis de force après le délai réglé).
 #[tauri::command]
-pub fn kill_all(state: State<'_, AppState>) -> Result<()> {
-    launch::kill_all()?;
+pub async fn kill_all(state: State<'_, AppState>) -> Result<()> {
+    let delay = state.settings.lock().unwrap().close_delay_secs;
+    tokio::task::spawn_blocking(move || launch::kill_all(delay))
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))??;
     state.running.lock().unwrap().clear();
     state.rejoin.lock().unwrap().clear();
+    state.pids.lock().unwrap().clear();
     state.push_log("stop", "Tous les clients arrêtés".into());
     Ok(())
 }
@@ -1028,4 +1093,151 @@ pub async fn import_accounts(
     }
     state.push_log("launch", format!("Import : {} compte(s) ajouté(s) sur {}", rep.added, rep.found));
     Ok(rep)
+}
+
+// ---------------------------------------------------------------------------
+// Performances, fenêtres, système
+// ---------------------------------------------------------------------------
+
+/// Mesures de la machine + une ligne par client Roblox.
+#[tauri::command]
+pub async fn client_metrics(state: State<'_, AppState>) -> Result<crate::perf::Metrics> {
+    let map = state.pids.lock().unwrap().clone();
+    tokio::task::spawn_blocking(move || crate::perf::metrics(&map))
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))
+}
+
+/// Affiche ou réduit la fenêtre d'un client (ou de tous si `pid` est vide).
+#[tauri::command]
+pub async fn window_action(pid: Option<u32>, action: String) -> Result<usize> {
+    tokio::task::spawn_blocking(move || {
+        let pids: Vec<u32> = match pid {
+            Some(p) => vec![p],
+            None => proc::roblox_processes().into_iter().map(|p| p.pid).collect(),
+        };
+        crate::winmgmt::show_windows(pids, action == "minimize")
+    })
+    .await
+    .map_err(|e| AppError::Other(e.to_string()))
+}
+
+/// Écrit (ou retire) les réglages graphiques de Roblox.
+#[tauri::command]
+pub async fn apply_graphics(enabled: bool, opts: crate::perf::GraphicsOpts) -> Result<String> {
+    tokio::task::spawn_blocking(move || crate::perf::apply_graphics(enabled, &opts))
+        .await
+        .map_err(|e| AppError::Other(e.to_string()))?
+        .map_err(AppError::Other)
+}
+
+/// Version de Roblox installée et dernière version publiée.
+#[tauri::command]
+pub async fn roblox_version() -> crate::perf::RobloxVersion {
+    crate::perf::roblox_version().await
+}
+
+/// Ouvre un dossier dans l'Explorateur : "data" | "exports" | "roblox-logs".
+#[tauri::command]
+pub fn open_path(kind: String) -> Result<()> {
+    let mut dir = match kind.as_str() {
+        "roblox-logs" => {
+            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+            d.push("Roblox");
+            d.push("logs");
+            d
+        }
+        _ => {
+            let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+            d.push("RoAccount");
+            if kind == "exports" {
+                d.push("exports");
+            }
+            d
+        }
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("explorer")
+            .arg(&dir)
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .map_err(|e| AppError::Other(e.to_string()))?;
+        dir.clear();
+        return Ok(());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = dir;
+        Err(AppError::Other("Disponible uniquement sous Windows.".into()))
+    }
+}
+
+/// Enregistre un petit fichier texte dans le dossier d'exports (ex. config partagée).
+#[tauri::command]
+pub fn save_export(name: String, content: String) -> Result<String> {
+    let ok = !name.is_empty()
+        && name.len() <= 80
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+        && !name.contains("..");
+    if !ok {
+        return Err(AppError::Other("Nom de fichier invalide.".into()));
+    }
+    if content.len() > 1_000_000 {
+        return Err(AppError::Other("Fichier trop gros.".into()));
+    }
+    let mut path = exports_dir()?;
+    path.push(name);
+    std::fs::write(&path, content)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Supprime les fichiers de logs de Roblox. Renvoie le nombre de fichiers supprimés.
+#[tauri::command]
+pub fn clean_roblox_logs() -> Result<usize> {
+    let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("dossier introuvable".into()))?;
+    d.push("Roblox");
+    d.push("logs");
+    let mut n = 0usize;
+    if let Ok(rd) = std::fs::read_dir(&d) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_file() && std::fs::remove_file(&p).is_ok() {
+                n += 1;
+            }
+        }
+    }
+    Ok(n)
+}
+
+/// Programme l'extinction du PC dans `minutes` minutes (0 = annule).
+#[tauri::command]
+pub fn schedule_shutdown(minutes: u32) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut cmd = std::process::Command::new("shutdown");
+        if minutes == 0 {
+            cmd.arg("/a");
+        } else {
+            cmd.args(["/s", "/f", "/t", &(minutes.min(1440) * 60).to_string()]);
+        }
+        cmd.creation_flags(0x0800_0000)
+            .output()
+            .map_err(|e| AppError::Other(e.to_string()))?;
+        return Ok(());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = minutes;
+        Err(AppError::Other("Disponible uniquement sous Windows.".into()))
+    }
+}
+
+/// Annule le lot en cours : les comptes pas encore lancés sont ignorés.
+#[tauri::command]
+pub fn cancel_batch(state: State<'_, AppState>) {
+    state.cancel_batch.store(true, Ordering::SeqCst);
 }

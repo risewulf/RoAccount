@@ -72,6 +72,30 @@ async fn authentication_ticket(cookie: &str) -> Result<String> {
         .ok_or_else(|| AppError::Launch("ticket d'authentification absent de la réponse".into()))
 }
 
+/// Mots ajoutés après chaque lien de lancement (Réglages → Lancement → Arguments).
+static EXTRA_ARGS: std::sync::OnceLock<std::sync::Mutex<String>> = std::sync::OnceLock::new();
+
+/// Enregistre les arguments : on ne garde que des caractères sûrs pour un lien de protocole.
+pub fn set_extra_args(raw: &str) {
+    let clean: String = raw
+        .split_whitespace()
+        .map(|w| w.chars().filter(|c| c.is_ascii_alphanumeric() || "+:_.-".contains(*c)).collect::<String>())
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join("+");
+    *EXTRA_ARGS
+        .get_or_init(|| std::sync::Mutex::new(String::new()))
+        .lock()
+        .unwrap() = clean;
+}
+
+fn extra_args() -> String {
+    EXTRA_ARGS
+        .get()
+        .map(|m| m.lock().unwrap().clone())
+        .unwrap_or_default()
+}
+
 /// Construit l'URI `roblox-player:` à partir du ticket et d'une URL PlaceLauncher.
 fn build_uri(ticket: &str, place_launcher: &str) -> String {
     let launch_time = std::time::SystemTime::now()
@@ -79,10 +103,12 @@ fn build_uri(ticket: &str, place_launcher: &str) -> String {
         .map(|d| d.as_millis())
         .unwrap_or(0);
     let encoded = urlencode(place_launcher);
+    let extra = extra_args();
+    let tail = if extra.is_empty() { String::new() } else { format!("+{extra}") };
     format!(
         "roblox-player:1+launchmode:play+gameinfo:{ticket}\
          +launchtime:{launch_time}+placelauncherurl:{encoded}\
-         +robloxLocale:fr_fr+gameLocale:fr_fr+channel:"
+         +robloxLocale:fr_fr+gameLocale:fr_fr+channel:{tail}"
     )
 }
 
@@ -196,15 +222,29 @@ pub async fn launch_follow(cookie: &str, user_id: u64) -> Result<()> {
     open_protocol(&uri)
 }
 
-/// Termine tous les processus Roblox (bouton « Tout arrêter »).
-pub fn kill_all() -> Result<()> {
+/// Termine tous les processus Roblox : fermeture douce (WM_CLOSE) d'abord, puis, passé
+/// `delay_secs`, arrêt de force.
+pub fn kill_all(delay_secs: u64) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         use std::process::Command;
-        for proc in ["RobloxPlayerBeta.exe", "RobloxPlayerLauncher.exe"] {
+        let procs = ["RobloxPlayerBeta.exe", "RobloxPlayerLauncher.exe"];
+        if delay_secs > 0 {
+            for p in procs {
+                let _ = Command::new("taskkill")
+                    .args(["/IM", p])
+                    .creation_flags(0x0800_0000)
+                    .output();
+            }
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(delay_secs);
+            while std::time::Instant::now() < deadline && !crate::proc::roblox_processes().is_empty() {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+            }
+        }
+        for p in procs {
             let _ = Command::new("taskkill")
-                .args(["/F", "/IM", proc])
+                .args(["/F", "/IM", p])
                 .creation_flags(0x0800_0000)
                 .output();
         }
@@ -213,6 +253,7 @@ pub fn kill_all() -> Result<()> {
 
     #[cfg(not(target_os = "windows"))]
     {
+        let _ = delay_secs;
         Err(AppError::Launch(
             "arrêt des clients disponible uniquement sur Windows".into(),
         ))

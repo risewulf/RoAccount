@@ -38,11 +38,12 @@ pub async fn fetch_news() -> Result<Vec<NewsItem>> {
 
 /// Ouvre une URL dans le navigateur — uniquement pour une liste de sites autorisés.
 pub fn open_url(url: &str) -> Result<()> {
-    const ALLOWED: [&str; 4] = [
+    const ALLOWED: [&str; 5] = [
         "https://discord.gg/u6wWWSUz3G",
         "https://roaccount.xyz",
         "https://github.com/risewulf/RoAccount",
         "https://www.autohotkey.com",
+        "https://www.roblox.com/download",
     ];
     let ok_chars = url.chars().all(|c| c.is_ascii_alphanumeric() || "/:._-?=#%&~".contains(c));
     if !ok_chars || !ALLOWED.iter().any(|a| url == *a || url.starts_with(&format!("{a}/"))) {

@@ -1,7 +1,7 @@
 import {
   DEFAULT_SETTINGS, type AccountMeta, type BackupInfo, type FriendReport, type ImportReport, type LogEntry,
-  type MacroInfo, type NewsItem, type PcInfo, type PrivateServer, type ProcInfo, type RunningMacro,
-  type ServerInfo, type Settings, type VaultStatus,
+  type MacroInfo, type Metrics, type NewsItem, type PcInfo, type PrivateServer, type ProcInfo, type RobloxVersion,
+  type RunningMacro, type ServerInfo, type Settings, type VaultStatus,
 } from "./types";
 
 /**
@@ -111,6 +111,45 @@ export const api = {
   exportCookies: (ids: string[], format: "json" | "cookies") => invoke<string>("export_cookies", { ids, format }),
   importAccounts: (input: string, group?: string) => invoke<ImportReport>("import_accounts", { input, group }),
   setPriority: (pid: number, level: string) => invoke<void>("set_priority", { pid, level }),
+
+  clientMetrics: () => invoke<Metrics>("client_metrics"),
+  windowAction: (pid: number | null, action: "show" | "minimize") => invoke<number>("window_action", { pid, action }),
+  applyGraphics: (enabled: boolean, opts: Record<string, unknown>) => invoke<string>("apply_graphics", { enabled, opts }),
+  robloxVersion: () => invoke<RobloxVersion>("roblox_version"),
+  openPath: (kind: "data" | "exports" | "roblox-logs") => invoke<void>("open_path", { kind }),
+  saveExport: (name: string, content: string) => invoke<string>("save_export", { name, content }),
+  cleanRobloxLogs: () => invoke<number>("clean_roblox_logs"),
+  scheduleShutdown: (minutes: number) => invoke<void>("schedule_shutdown", { minutes }),
+
+  cancelBatch: () => invoke<void>("cancel_batch"),
+
+  /** Écoute la progression d'un lot (ticket → run → join). Renvoie la fonction pour se désabonner. */
+  onBatch: async (cb: (e: { id: string; stage: string; error: string | null }) => void): Promise<() => void> => {
+    if (!inTauri) {
+      const h = (ev: Event) => cb((ev as CustomEvent).detail);
+      window.addEventListener("roa-mock-batch", h);
+      return () => window.removeEventListener("roa-mock-batch", h);
+    }
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<{ id: string; stage: string; error: string | null }>("batch", (e) => cb(e.payload));
+  },
+
+  /** Raccourci clavier global (arrêt d'urgence). `null` retire l'ancien. */
+  setGlobalHotkey: async (combo: string | null, onFire: () => void) => {
+    if (!inTauri) return;
+    const gs = await import("@tauri-apps/plugin-global-shortcut");
+    await gs.unregisterAll();
+    if (combo) await gs.register(combo, (e) => { if (e.state === "Pressed") onFire(); });
+  },
+
+  winControl: async (action: "minimize" | "maximize" | "close") => {
+    if (!inTauri) return;
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const w = getCurrentWindow();
+    if (action === "minimize") await w.minimize();
+    else if (action === "maximize") await w.toggleMaximize();
+    else await w.close();
+  },
 
   isMock: !inTauri,
 };
@@ -255,6 +294,14 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "open_url":
       return undefined as T;
     case "launch_batch_servers": {
+      const emit = (id: string, stage: string, error: string | null = null) =>
+        window.dispatchEvent(new CustomEvent("roa-mock-batch", { detail: { id, stage, error } }));
+      ((args?.ids as string[]) ?? []).forEach((id, i) => {
+        emit(id, "queued");
+        window.setTimeout(() => emit(id, "ticket"), 300 + i * 900);
+        window.setTimeout(() => emit(id, "run"), 700 + i * 900);
+        window.setTimeout(() => emit(id, "join"), 1100 + i * 900);
+      });
       (args?.ids as string[])?.forEach((id) => {
         const a = mockAccounts.find((x) => x.id === id);
         if (a && !a.main) { a.presence = "InGame"; a.running = true; }
@@ -305,6 +352,31 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
       return { found: 2, added: 1, failed: ["…ABCDEF : cookie .ROBLOSECURITY invalide ou expiré"] } as T;
     }
     case "set_priority":
+      return undefined as T;
+    case "cancel_batch":
+      return undefined as T;
+    case "client_metrics": {
+      const running = mockAccounts.filter((a) => a.running);
+      const clients = running.map((a, i) => ({
+        pid: 10000 + i, account_id: a.id, cpu: 3 + Math.random() * 10, memory_mb: 600 + Math.floor(Math.random() * 500),
+        commit_mb: 900 + Math.floor(Math.random() * 600), read_kbps: Math.floor(Math.random() * 250), write_kbps: Math.floor(Math.random() * 60),
+        uptime_s: 90 + i * 40,
+      }));
+      return { cpu: 20 + Math.random() * 15, mem_pct: 38 + Math.random() * 4, mem_used_mb: 6200, mem_total_mb: 16384, gpu_pct: null, clients } as T;
+    }
+    case "window_action":
+      return 1 as T;
+    case "apply_graphics":
+      return "C:/…/Roblox/Versions/version-demo/ClientSettings/ClientAppSettings.json" as T;
+    case "roblox_version":
+      return { installed: "version-5e1f0c9a7d3b4e21", latest: "version-9ac8595712b447a7" } as T;
+    case "open_path":
+      return undefined as T;
+    case "save_export":
+      return ("C:/…/RoAccount/exports/" + String(args?.name)) as T;
+    case "clean_roblox_logs":
+      return 12 as T;
+    case "schedule_shutdown":
       return undefined as T;
     case "remove_account": {
       const i = mockAccounts.findIndex((a) => a.id === args?.id);

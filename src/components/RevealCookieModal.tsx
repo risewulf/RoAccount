@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { useStore } from "../store";
 import type { AccountMeta } from "../lib/types";
 import { IconX } from "./icons";
 
 export function RevealCookieModal({ account, onClose }: { account: AccountMeta; onClose: () => void }) {
+  const { settings } = useStore();
   const [revealed, setRevealed] = useState(false);
   const [cookie, setCookie] = useState<string | null>(null);
   const [show, setShow] = useState(false);
@@ -23,6 +25,10 @@ export function RevealCookieModal({ account, onClose }: { account: AccountMeta; 
     if (!cookie) return;
     try {
       await navigator.clipboard.writeText(cookie);
+      // vide le presse-papiers après le délai réglé (Sécurité)
+      if (settings.clipboardClearSecs > 0) {
+        window.setTimeout(() => { void navigator.clipboard.writeText("").catch(() => {}); }, settings.clipboardClearSecs * 1000);
+      }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {

@@ -1,74 +1,60 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
+import type { Settings } from "../lib/types";
+import { NumInput, Row, Toggle } from "../components/Controls";
+
+const EVENTS: { k: keyof Settings; title: string; desc: string }[] = [
+  { k: "alertLaunch", title: "Lancements", desc: "Un client est entré en jeu (hors reconnexion ou redémarrage)." },
+  { k: "alertCrash", title: "Crashs", desc: "Un client s'est fermé sans que RoAccount l'ait fermé." },
+  { k: "alertFreeze", title: "Ne répond plus", desc: "La fenêtre d'un client ne répond plus depuis 30 s." },
+  { k: "alertDisconnect", title: "Déconnexions", desc: "Roblox a expulsé un client, son serveur a fermé ou la connexion a été perdue." },
+  { k: "alertRestart", title: "Reconnexions et redémarrages", desc: "La reconnexion auto ou le redémarrage auto a relancé un compte." },
+  { k: "alertMemRestart", title: "Redémarrages mémoire", desc: "Un client a été redémarré parce qu'il utilisait trop de mémoire." },
+  { k: "alertGiveUp", title: "Abandon", desc: "RoAccount a cessé de relancer un compte après trop d'essais." },
+  { k: "alertBatch", title: "Lot terminé", desc: "Combien de comptes d'un lot sont entrés en jeu." },
+  { k: "alertSummary", title: "Résumé de statut", desc: "Combien de clients tournent, avec leur RAM et leur CPU." },
+];
 
 export function DiscordView() {
   const store = useStore();
   const { settings } = store;
+  const [hook, setHook] = useState(settings.discordWebhook);
   const [busy, setBusy] = useState(false);
+  const saved = hook.trim() === settings.discordWebhook.trim();
 
   async function test() {
     setBusy(true);
-    try { await api.testDiscord(settings.discordWebhook); store.toast("Message de test envoyé sur Discord."); }
+    try { await api.testDiscord(hook.trim()); store.toast("Message de test envoyé sur Discord."); }
     catch (e) { store.toast(String(e)); } finally { setBusy(false); }
   }
 
-  function toggle<K extends keyof typeof settings>(k: K) {
-    store.updateSettings({ [k]: !settings[k] } as Partial<typeof settings>);
-  }
-
   return (
-    <section>
-      <div className="vhead"><div><h1>Alertes Discord</h1><p>Reçois les crashs, déconnexions et fins de lot sur ton propre webhook.</p></div></div>
+    <div className="page narrow">
+      <div className="set-head"><div><h1>Discord</h1><p className="sub" style={{ marginTop: 4 }}>Des alertes dans un salon de ton serveur, avec une mention si tu veux.</p></div></div>
 
       <div className="card">
-        <h3>Webhook</h3>
-        <p className="sub">Gardé en local. Rien n'est envoyé tant que ce champ est vide.</p>
-        <label className="field" style={{ marginBottom: 12 }}>
-          <input
-            value={settings.discordWebhook}
-            onChange={(e) => store.updateSettings({ discordWebhook: e.target.value })}
-            placeholder="https://discord.com/api/webhooks/…"
-            spellCheck={false}
-          />
-        </label>
-        <button className="btn primary" onClick={test} disabled={busy || !settings.discordWebhook}>
-          {busy ? "Envoi…" : "Envoyer un test"}
-        </button>
+        <Row title="Webhook" desc={settings.discordWebhook ? "Défini. Les alertes partent vers ce salon." : "Non défini. Colle l'URL du webhook affichée par Discord (Copier l'URL du webhook)."} col>
+          <div className="inline" style={{ width: "100%", flexWrap: "nowrap" }}>
+            <input className="txt mono" value={hook} onChange={(e) => setHook(e.target.value)} placeholder="https://discord.com/api/webhooks/…" spellCheck={false} aria-label="Webhook Discord" />
+            <button className="btn" disabled={saved} onClick={() => { store.updateSettings({ discordWebhook: hook.trim() }); store.toast("Webhook enregistré."); }}>Enregistrer</button>
+            <button className="btn" disabled={busy || !hook.trim()} onClick={() => void test()}>{busy ? "Envoi…" : "Tester"}</button>
+          </div>
+        </Row>
+        <Row title="Mention" desc="Ton ID Discord, ou un rôle sous la forme <@&id>. Les crashs, déconnexions et blocages te mentionnent.">
+          <input className="txt mono" style={{ width: 230 }} value={settings.discordUserId} onChange={(e) => store.updateSettings({ discordUserId: e.target.value })} placeholder="désactivé" aria-label="Mention Discord" />
+        </Row>
       </div>
 
+      <h2 className="group-title">Événements</h2>
       <div className="card">
-        <h3>Ping</h3>
-        <p className="sub">Ajoute une @mention de toi dans les alertes crash, déconnexion et figé. Laisse vide pour ne pas être pingé.</p>
-        <label className="field" style={{ marginBottom: 8 }}>
-          <input
-            value={settings.discordUserId}
-            onChange={(e) => store.updateSettings({ discordUserId: e.target.value.replace(/\D/g, "") })}
-            placeholder="Ton ID Discord (ex. 123456789012345678)"
-            inputMode="numeric"
-            spellCheck={false}
-          />
-        </label>
-        <p className="hint">Discord → Réglages → Avancé → active le mode développeur, puis clic droit sur ton profil → « Copier l'identifiant ».</p>
+        {EVENTS.map((e) => (
+          <Row key={e.k} title={e.title} desc={e.desc}>
+            {e.k === "alertSummary" && settings.alertSummary && (<><span className="sub">toutes les</span><NumInput value={settings.summaryEveryMin} onChange={(n) => store.updateSettings({ summaryEveryMin: n })} min={1} max={1440} width={70} /><span className="sub">min</span></>)}
+            <Toggle on={settings[e.k] as boolean} label={e.title} onChange={(v) => store.updateSettings({ [e.k]: v } as Partial<Settings>)} />
+          </Row>
+        ))}
       </div>
-
-      <div className="card">
-        <h3>Événements</h3>
-        <p className="sub">Choisis ce qui déclenche une alerte.</p>
-        <Row label="Crash d'un client" desc="Avec la raison tirée du log" on={settings.alertCrash} onClick={() => toggle("alertCrash")} />
-        <Row label="Déconnexion" desc="Quand un compte quitte la partie" on={settings.alertDisconnect} onClick={() => toggle("alertDisconnect")} />
-        <Row label="Client figé" desc="La fenêtre ne répond plus depuis ~40 s" on={settings.alertFreeze} onClick={() => toggle("alertFreeze")} />
-        <Row label="Lot terminé" desc="Tous les comptes d'un lancement sont entrés" on={settings.alertBatch} onClick={() => toggle("alertBatch")} />
-      </div>
-    </section>
-  );
-}
-
-function Row({ label, desc, on, onClick }: { label: string; desc: string; on: boolean; onClick: () => void }) {
-  return (
-    <div className="row">
-      <div className="l"><b>{label}</b><div>{desc}</div></div>
-      <button className={"tg" + (on ? " on" : "")} onClick={onClick} aria-pressed={on} aria-label={label} />
     </div>
   );
 }

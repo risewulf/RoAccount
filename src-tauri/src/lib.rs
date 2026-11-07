@@ -6,6 +6,7 @@ mod error;
 mod launch;
 mod macros;
 mod models;
+mod perf;
 mod proc;
 mod roblox;
 mod settings;
@@ -22,12 +23,20 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Multi-instance : tenir le mutex ROBLOX_singletonEvent avant tout.
-    singleton::hold();
+    if settings::load().multi_instance {
+        singleton::hold();
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(AppState::new())
         .setup(|app| {
+            {
+                let st = app.state::<AppState>();
+                let s = st.settings.lock().unwrap();
+                launch::set_extra_args(s.extra.get("launchArgs").and_then(|v| v.as_str()).unwrap_or(""));
+            }
             // boucle d'arrière-plan : auto-rejoin + alertes
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -37,13 +46,17 @@ pub fn run() {
             // icône tray + menu
             let _ = tray::build(app.handle());
 
-            // fermer = réduire dans la barre (ne quitte pas)
+            // fermer = réduire dans la zone de notification (réglable ; sinon l'appli quitte)
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
+                let handle = app.handle().clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        api.prevent_close();
-                        let _ = w.hide();
+                        let to_tray = handle.state::<AppState>().settings.lock().unwrap().close_to_tray;
+                        if to_tray {
+                            api.prevent_close();
+                            let _ = w.hide();
+                        }
                     }
                 });
             }
@@ -100,6 +113,15 @@ pub fn run() {
             commands::export_csv,
             commands::arrange_windows,
             commands::set_priority,
+            commands::client_metrics,
+            commands::window_action,
+            commands::apply_graphics,
+            commands::roblox_version,
+            commands::open_path,
+            commands::save_export,
+            commands::clean_roblox_logs,
+            commands::schedule_shutdown,
+            commands::cancel_batch,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au démarrage de RoAccount");
