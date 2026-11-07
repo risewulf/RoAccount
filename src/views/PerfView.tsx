@@ -5,17 +5,18 @@ import { copyText, fmtMem, pickTextFile } from "../lib/ui";
 import { DEFAULT_SETTINGS, type Settings } from "../lib/types";
 import { NumInput, Row, Seg, Toggle } from "../components/Controls";
 import { IconCopy, IconDownload, IconFile, IconUpload } from "../components/icons";
+import { FPS_UNLIMITED, fpsLabel, gfxAny, gfxKey, gfxOf } from "../lib/gfx";
 
 type Patch = Partial<Settings>;
 
 const PERF_KEYS = [
-  "fpsCap", "lowestGraphics", "msaa", "textures", "render", "graySky", "noGrass",
+  "fpsCap", "lowestGraphics", "msaa", "textures", "render", "graySky", "noGrass", "voxelLighting", "noShadows", "noPostFx",
   "minimizeOnLaunch", "tinyOnLaunch", "muteOnLaunch",
   "adaptiveLimits", "spreadCores", "trimMemory", "trimEveryMin", "throttleMem", "throttleMemMb", "restartMem", "restartMemMb", "previewFps",
 ] as const;
 
 const BASE_OFF: Patch = {
-  fpsCap: 0, lowestGraphics: false, msaa: 0, textures: "default", render: "default", graySky: false, noGrass: false,
+  fpsCap: 0, lowestGraphics: false, msaa: 0, textures: "default", render: "default", graySky: false, noGrass: false, voxelLighting: false, noShadows: false, noPostFx: false,
   minimizeOnLaunch: false, tinyOnLaunch: false, muteOnLaunch: false,
   adaptiveLimits: false, spreadCores: false, trimMemory: false, throttleMem: false, restartMem: false,
 };
@@ -33,7 +34,7 @@ const PRESETS: { id: "max" | "balanced" | "defaults"; name: string; desc: string
   },
   {
     id: "defaults", name: "Roblox defaults", desc: "RoAccount leaves Roblox as it is.",
-    lines: ["No FPS limit", "Your own graphics", "Visible windows"], more: "+1 setting",
+    lines: ["Roblox's own FPS cap", "Your own graphics", "Visible windows"], more: "+1 setting",
     patch: { ...BASE_OFF },
   },
 ];
@@ -42,7 +43,7 @@ function matches(s: Settings, p: Patch): boolean {
   return (Object.keys(p) as (keyof Settings)[]).every((k) => s[k] === p[k]);
 }
 
-const FPS_CHOICES = [0, 10, 15, 30, 60, 144];
+const FPS_CHOICES = [0, 10, 15, 30, 60, 144, FPS_UNLIMITED];
 
 export function PerfView() {
   const store = useStore();
@@ -52,7 +53,7 @@ export function PerfView() {
   const [result, setResult] = useState<null | { n: number; mem: number; cpu: number; ramTotal: number; predicted: number; budget: number; advice: "max" | "balanced" }>(null);
   const [shareOpen, setShareOpen] = useState<null | "paste">(null);
   const [pasteTxt, setPasteTxt] = useState("");
-  const lastGfx = useRef(JSON.stringify([s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]));
+  const lastGfx = useRef(gfxKey(s));
 
   const current = PRESETS.find((p) => matches(s, p.patch))?.id ?? null;
 
@@ -60,18 +61,18 @@ export function PerfView() {
 
   // écrit les réglages graphiques de Roblox (après une courte pause pour éviter les écritures en rafale)
   useEffect(() => {
-    const key = JSON.stringify([s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]);
+    const key = gfxKey(s);
     if (key === lastGfx.current) return; // rien n'a changé : on n'écrit rien
     lastGfx.current = key;
     const t = window.setTimeout(() => {
-      const any = s.fpsCap > 0 || s.lowestGraphics || s.msaa > 0 || s.textures !== "default" || s.render !== "default" || s.graySky || s.noGrass;
-      api.applyGraphics(any, { fpsCap: s.fpsCap, lowestGraphics: s.lowestGraphics, msaa: s.msaa, textures: s.textures, render: s.render, graySky: s.graySky, noGrass: s.noGrass })
+      const any = gfxAny(s);
+      api.applyGraphics(any, gfxOf(s))
         .then(() => store.toast(any ? "Graphics settings written — active on the next client launch." : "Graphics settings removed."))
         .catch((e) => store.toast(String(e)));
     }, 700);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]);
+  }, [gfxKey(s)]); // eslint-disable-line
 
   async function measure() {
     const samples: { n: number; mem: number; cpu: number; ram: number; used: number }[] = [];
@@ -160,7 +161,7 @@ export function PerfView() {
       <div className="card">
         <Row title="FPS limit" desc="The maximum frames per second drawn by each client. Lower means less load." explain="Written to Roblox's settings (ClientAppSettings.json): applied on the next client launch. Roblox may ignore some settings.">
           <div className="fps-set">
-            {FPS_CHOICES.map((f) => <button key={f} className={s.fpsCap === f ? "on" : ""} onClick={() => set({ fpsCap: f })}>{f === 0 ? "None" : f}</button>)}
+            {FPS_CHOICES.map((f) => <button key={f} className={s.fpsCap === f ? "on" : ""} onClick={() => set({ fpsCap: f })}>{fpsLabel(f)}</button>)}
           </div>
         </Row>
         <Row title="Minimum graphics" desc="Saves a lot of GPU and CPU with several clients.">
@@ -185,6 +186,9 @@ export function PerfView() {
           <div className="inset-title">Remove visual effects</div>
           <Row title="Grey sky" desc="Replaces the skybox with a flat grey."><Toggle on={s.graySky} label="Grey sky" onChange={(v) => set({ graySky: v })} /></Row>
           <Row title="No grass" desc="Removes grass from rendering."><Toggle on={s.noGrass} label="No grass" onChange={(v) => set({ noGrass: v })} /></Row>
+          <Row title="No shadows" desc="Turns the shadows off."><Toggle on={s.noShadows} label="No shadows" onChange={(v) => set({ noShadows: v })} /></Row>
+          <Row title="No post-processing" desc="Turns off bloom, blur and colour effects."><Toggle on={s.noPostFx} label="No post-processing" onChange={(v) => set({ noPostFx: v })} /></Row>
+          <Row title="Voxel lighting" desc="Uses the lightest lighting engine instead of the game's own."><Toggle on={s.voxelLighting} label="Voxel lighting" onChange={(v) => set({ voxelLighting: v })} /></Row>
         </div>
         <Row title="Minimize on launch" desc="Each batch is minimized to the taskbar once it is in game, without stealing focus.">
           <Toggle on={s.minimizeOnLaunch} label="Minimize on launch" onChange={(v) => set({ minimizeOnLaunch: v })} />

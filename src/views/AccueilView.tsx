@@ -125,7 +125,8 @@ function ClientCard({ a, m, detailed }: { a: AccountMeta; m?: ClientMetric; deta
   const [menu, setMenu] = useState(false);
 
   const tags: string[] = [];
-  if (settings.fpsCap > 0) tags.push(`${settings.fpsCap} FPS max`);
+  if (settings.fpsCap >= 9999) tags.push("FPS unlimited");
+  else if (settings.fpsCap > 0) tags.push(`${settings.fpsCap} FPS max`);
   if (settings.lowestGraphics) tags.push("Minimum graphics");
   if (settings.adaptiveLimits) tags.push("Adaptive limits");
   if (a.main) tags.push("MAIN");

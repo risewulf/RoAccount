@@ -114,6 +114,9 @@ export interface Settings {
   render: "default" | "d3d11" | "vulkan" | "opengl";
   graySky: boolean;
   noGrass: boolean;
+  voxelLighting: boolean;
+  noShadows: boolean;
+  noPostFx: boolean;
   preset: "max" | "balanced" | "defaults" | "custom";
   previewFps: 5 | 15 | 30 | 60;
 
@@ -252,6 +255,9 @@ export const DEFAULT_SETTINGS: Settings = {
   render: "default",
   graySky: false,
   noGrass: false,
+  voxelLighting: false,
+  noShadows: false,
+  noPostFx: false,
   preset: "defaults",
   previewFps: 15,
 

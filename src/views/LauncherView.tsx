@@ -9,6 +9,7 @@ import { logEvent } from "../lib/history";
 import { fmtMem } from "../lib/ui";
 import type { BootProgress, BootStatus, LaunchProfile, NewsItem, Settings } from "../lib/types";
 import { IconCheck, IconChevDown, IconGauge, IconGear, IconHome, IconPlay, IconRocket, IconServer, IconUser, IconX } from "../components/icons";
+import { FPS_UNLIMITED, fpsLabel, gfxAny, gfxKey, gfxOf } from "../lib/gfx";
 
 type Tab = "home" | "mods";
 type Stage = "queued" | "ticket" | "run" | "join" | "failed" | "cancelled";
@@ -48,20 +49,20 @@ export function LauncherView() {
   }, [pop]);
 
   // graphics flags are written to Roblox a moment after a Mods card changes them
-  const lastGfx = useRef(JSON.stringify([s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]));
+  const lastGfx = useRef(gfxKey(s));
   useEffect(() => {
-    const key = JSON.stringify([s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]);
+    const key = gfxKey(s);
     if (key === lastGfx.current) return;
     lastGfx.current = key;
     const t = window.setTimeout(() => {
-      const any = s.fpsCap > 0 || s.lowestGraphics || s.msaa > 0 || s.textures !== "default" || s.render !== "default" || s.graySky || s.noGrass;
-      api.applyGraphics(any, { fpsCap: s.fpsCap, lowestGraphics: s.lowestGraphics, msaa: s.msaa, textures: s.textures, render: s.render, graySky: s.graySky, noGrass: s.noGrass })
+      const any = gfxAny(s);
+      api.applyGraphics(any, gfxOf(s))
         .then(() => store.toast(any ? "Applied — active on the next client launch." : "Graphics settings removed."))
         .catch((e) => store.toast(String(e)));
     }, 700);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.fpsCap, s.lowestGraphics, s.msaa, s.textures, s.render, s.graySky, s.noGrass]);
+  }, [gfxKey(s)]); // eslint-disable-line
 
   const picked = accounts.filter((a) => selected.has(a.id));
   const usable = picked.filter((a) => launchable(a));
@@ -111,10 +112,13 @@ export function LauncherView() {
   const set = (p: Partial<Settings>) => store.updateSettings({ ...p, preset: "custom" });
 
   const mods: ModCard[] = [
-    { id: "fps", icon: "⚡", title: "FPS unlock", desc: "Raise or cap the frame rate of every client.", on: s.fpsCap > 0,
-      steps: [{ label: "Off", patch: { fpsCap: 0 }, active: s.fpsCap === 0 }, { label: "30", patch: { fpsCap: 30 }, active: s.fpsCap === 30 }, { label: "60", patch: { fpsCap: 60 }, active: s.fpsCap === 60 }, { label: "144", patch: { fpsCap: 144 }, active: s.fpsCap === 144 }] },
+    { id: "fps", icon: "⚡", title: "FPS unlock", desc: "Cap the frame rate of every client, or remove the limit with ∞.", on: s.fpsCap > 0,
+      steps: [0, 30, 60, 144, FPS_UNLIMITED].map((f) => ({ label: f === 0 ? "Off" : fpsLabel(f), patch: { fpsCap: f }, active: s.fpsCap === f })) },
     { id: "gfx", icon: "🎛️", title: "Minimum graphics", desc: "Saves a lot of GPU and CPU with several clients.", on: s.lowestGraphics, toggle: (v) => ({ lowestGraphics: v }) },
     { id: "tex", icon: "🧱", title: "Low textures", desc: "Smaller textures, less video memory.", on: s.textures !== "default", toggle: (v) => ({ textures: v ? "low" : "default" }) },
+    { id: "shadows", icon: "🌑", title: "No shadows", desc: "Turns the shadows off for a big FPS gain.", on: s.noShadows, toggle: (v) => ({ noShadows: v }) },
+    { id: "postfx", icon: "✨", title: "No post-processing", desc: "Turns off bloom, blur and colour effects.", on: s.noPostFx, toggle: (v) => ({ noPostFx: v }) },
+    { id: "voxel", icon: "💡", title: "Voxel lighting", desc: "Uses the lightest lighting engine.", on: s.voxelLighting, toggle: (v) => ({ voxelLighting: v }) },
     { id: "sky", icon: "☁️", title: "Grey sky", desc: "Replaces the skybox with a flat grey.", on: s.graySky, toggle: (v) => ({ graySky: v }) },
     { id: "grass", icon: "🌿", title: "No grass", desc: "Removes grass from rendering.", on: s.noGrass, toggle: (v) => ({ noGrass: v }) },
     { id: "mute", icon: "🔇", title: "Mute on launch", desc: "New clients start silent.", on: s.muteOnLaunch, toggle: (v) => ({ muteOnLaunch: v }) },

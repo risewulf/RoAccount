@@ -118,6 +118,11 @@ pub struct GraphicsOpts {
     pub render: String,
     pub gray_sky: bool,
     pub no_grass: bool,
+    /// Force the Voxel lighting engine (lighter than Future).
+    pub voxel: bool,
+    pub no_shadows: bool,
+    /// Turn off post-processing effects (bloom, blur, colour grading…).
+    pub no_post_fx: bool,
 }
 
 impl Default for GraphicsOpts {
@@ -130,6 +135,9 @@ impl Default for GraphicsOpts {
             render: "default".into(),
             gray_sky: false,
             no_grass: false,
+            voxel: false,
+            no_shadows: false,
+            no_post_fx: false,
         }
     }
 }
@@ -149,6 +157,9 @@ const OWNED_FLAGS: &[&str] = &[
     "FFlagDebugSkyGray",
     "FIntFRMMinGrassDistance",
     "FIntFRMMaxGrassDistance",
+    "DFFlagDebugRenderForceTechnologyVoxel",
+    "FIntRenderShadowIntensity",
+    "FFlagDisablePostFx",
 ];
 
 /// Dossier `Versions\\version-xxxx` le plus récent contenant RobloxPlayerBeta.exe.
@@ -235,6 +246,15 @@ fn apply_graphics_in(dir: &std::path::Path, enabled: bool, o: &GraphicsOpts) -> 
         }
         if o.gray_sky {
             map.insert("FFlagDebugSkyGray".into(), json!(true));
+        }
+        if o.voxel {
+            map.insert("DFFlagDebugRenderForceTechnologyVoxel".into(), json!(true));
+        }
+        if o.no_shadows {
+            map.insert("FIntRenderShadowIntensity".into(), json!(0));
+        }
+        if o.no_post_fx {
+            map.insert("FFlagDisablePostFx".into(), json!(true));
         }
         if o.no_grass {
             map.insert("FIntFRMMinGrassDistance".into(), json!(0));
