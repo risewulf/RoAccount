@@ -73,6 +73,16 @@ pub struct Settings {
     pub notify_windows: bool,
     /// Show "RoAccount — N accounts in game" on your Discord profile (Rich Presence).
     pub rich_presence: bool,
+    /// RoAccount bootstrapper: install, update and launch Roblox by itself (instead of Roblox's launcher).
+    pub own_roblox: bool,
+    /// Keep this version (folder name) instead of following the newest. Empty = newest.
+    pub own_roblox_pin: String,
+    pub own_roblox_keep: u32,
+    pub own_roblox_auto_update: bool,
+    /// Overlay the Mods folder onto the installed version before each launch.
+    pub own_roblox_mods: bool,
+    /// Roblox deployment channel ("" = production).
+    pub roblox_channel: String,
     /// Copy the encrypted vault to backups/ every time RoAccount exits, keeping the last N copies.
     pub auto_backup: bool,
     pub auto_backup_keep: u32,
@@ -126,6 +136,12 @@ impl Default for Settings {
             alert_after_min: 0,
             notify_windows: false,
             rich_presence: false,
+            own_roblox: false,
+            own_roblox_pin: String::new(),
+            own_roblox_keep: 2,
+            own_roblox_auto_update: true,
+            own_roblox_mods: true,
+            roblox_channel: String::new(),
             auto_backup: true,
             auto_backup_keep: 5,
             queue_min_free_mb: 0,

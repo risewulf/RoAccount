@@ -13,7 +13,7 @@ import { DebugView } from "./views/DebugView";
 import { MacrosView } from "./views/MacrosView";
 import { ToolsView } from "./views/ToolsView";
 import {
-  AProposSettings, ApparenceSettings, DonneesSettings, LancementSettings, RaccourcisSettings, SecuriteSettings,
+  AProposSettings, ApparenceSettings, DonneesSettings, LancementSettings, RaccourcisSettings, RobloxSettings, SecuriteSettings,
 } from "./views/SettingsViews";
 import { LockScreen } from "./views/LockScreen";
 import { Automation } from "./components/Automation";
@@ -154,6 +154,7 @@ function Pages() {
     case "s-donnees": return <DonneesSettings />;
     case "s-apropos": return <AProposSettings />;
     case "s-raccourcis": return <RaccourcisSettings />;
+    case "s-roblox": return <RobloxSettings />;
   }
 }
 

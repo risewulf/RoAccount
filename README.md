@@ -204,3 +204,7 @@ roaccount/
 ## License
 
 [MIT](LICENSE) © Risewulf
+
+## Bootstrapper (Settings → Roblox)
+
+RoAccount can install, update and start Roblox by itself, like a custom bootstrapper: it downloads the player from Roblox's own servers (checksums verified) into `%LOCALAPPDATA%\RoAccount\Roblox\Versions`, keeps it up to date, carries your graphics flags to every new version, can pin a version, and can overlay a Mods folder (cosmetic content files; programs and scripts are ignored). If anything fails it falls back to the official launcher. It is off by default.

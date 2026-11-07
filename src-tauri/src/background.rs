@@ -14,9 +14,32 @@ use tauri::{AppHandle, Emitter, Manager};
 pub async fn run(app: AppHandle) {
     // laisse le coffre se déverrouiller et l'UI démarrer
     tokio::time::sleep(Duration::from_secs(12)).await;
+    let mut n: u32 = 0;
     loop {
         tick(&app).await;
+        if n % 90 == 1 {
+            auto_update_roblox(&app).await; // about every 30 minutes
+        }
+        n = n.wrapping_add(1);
         tokio::time::sleep(Duration::from_secs(20)).await;
+    }
+}
+
+/// RoAccount's own Roblox: install the newest version when a new one is out (unless a version is pinned).
+async fn auto_update_roblox(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    if !s.own_roblox || !s.own_roblox_auto_update || !s.own_roblox_pin.is_empty() {
+        return;
+    }
+    let Ok(latest) = crate::bootstrap::latest(&s.roblox_channel).await else { return };
+    if crate::bootstrap::exe_path(&latest.version).exists() {
+        return;
+    }
+    state.push_log("launch", format!("Roblox {} is out — updating RoAccount's copy", latest.number));
+    match crate::commands::install_version(app, &latest.version, &s.roblox_channel, s.own_roblox_keep.max(1) as usize).await {
+        Ok(()) => state.push_log("launch", format!("Roblox {} installed", latest.number)),
+        Err(e) => state.push_log("crash", format!("Roblox update failed: {e}")),
     }
 }
 

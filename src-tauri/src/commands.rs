@@ -480,6 +480,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Settings {
 #[tauri::command]
 pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Settings {
     crate::launch::set_extra_args(settings.extra.get("launchArgs").and_then(|v| v.as_str()).unwrap_or(""));
+    crate::bootstrap::configure(settings.own_roblox, &settings.own_roblox_pin, settings.own_roblox_mods);
     *state.settings.lock().unwrap() = settings.clone();
     crate::settings::save(&settings);
     settings
@@ -1338,6 +1339,11 @@ pub async fn roblox_version() -> crate::perf::RobloxVersion {
 #[tauri::command]
 pub fn open_path(kind: String) -> Result<()> {
     let mut dir = match kind.as_str() {
+        "roblox-own" | "roblox-mods" => {
+            let d = if kind == "roblox-mods" { crate::bootstrap::mods_dir() } else { crate::bootstrap::root_dir() };
+            let _ = std::fs::create_dir_all(&d);
+            d
+        }
         "roblox-logs" => {
             let mut d = dirs::data_local_dir().ok_or_else(|| AppError::Io("folder not found".into()))?;
             d.push("Roblox");
@@ -1572,4 +1578,84 @@ pub fn auto_backup(state: &AppState) {
     for p in files.into_iter().skip(keep) {
         let _ = std::fs::remove_file(p);
     }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* RoAccount bootstrapper                                              */
+/* ------------------------------------------------------------------ */
+
+static BOOT_BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct BootStatus {
+    pub enabled: bool,
+    pub root: String,
+    pub mods: String,
+    pub installed: Vec<crate::bootstrap::InstalledVersion>,
+    pub current: Option<String>,
+    pub latest: Option<String>,
+    pub latest_number: Option<String>,
+    pub busy: bool,
+}
+
+/// Installs a version with progress events ("bootstrap"), then prunes old versions. One install at a time.
+pub async fn install_version(app: &AppHandle, version: &str, channel: &str, keep: usize) -> std::result::Result<(), String> {
+    use std::sync::atomic::Ordering;
+    if BOOT_BUSY.swap(true, Ordering::SeqCst) {
+        return Err("An installation is already running.".into());
+    }
+    let last = std::sync::Arc::new(std::sync::Mutex::new(Instant::now() - Duration::from_secs(1)));
+    let a2 = app.clone();
+    let res = crate::bootstrap::install(version, channel, move |p| {
+        // download progress arrives per chunk: let the UI see ~10 updates a second
+        let mut t = last.lock().unwrap();
+        if p.stage != "download" || t.elapsed() >= Duration::from_millis(100) {
+            *t = Instant::now();
+            let _ = a2.emit("bootstrap", p);
+        }
+    })
+    .await;
+    BOOT_BUSY.store(false, Ordering::SeqCst);
+    res?;
+    crate::bootstrap::prune(keep, version);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn bootstrap_status(state: State<'_, AppState>) -> Result<BootStatus> {
+    let s = state.settings.lock().unwrap().clone();
+    let latest = tokio::time::timeout(Duration::from_secs(8), crate::bootstrap::latest(&s.roblox_channel))
+        .await
+        .ok()
+        .and_then(|r| r.ok());
+    Ok(BootStatus {
+        enabled: s.own_roblox,
+        root: crate::bootstrap::root_dir().to_string_lossy().to_string(),
+        mods: crate::bootstrap::mods_dir().to_string_lossy().to_string(),
+        installed: crate::bootstrap::installed(),
+        current: crate::bootstrap::current_name(),
+        latest: latest.as_ref().map(|l| l.version.clone()),
+        latest_number: latest.map(|l| l.number),
+        busy: BOOT_BUSY.load(std::sync::atomic::Ordering::SeqCst),
+    })
+}
+
+/// Installs the given version, or the newest one for the configured channel.
+#[tauri::command]
+pub async fn bootstrap_install(app: AppHandle, state: State<'_, AppState>, version: Option<String>) -> Result<String> {
+    let s = state.settings.lock().unwrap().clone();
+    let ver = match version {
+        Some(v) if !v.is_empty() => v,
+        _ => crate::bootstrap::latest(&s.roblox_channel).await.map_err(AppError::Other)?.version,
+    };
+    install_version(&app, &ver, &s.roblox_channel, s.own_roblox_keep.max(1) as usize)
+        .await
+        .map_err(AppError::Other)?;
+    Ok(ver)
+}
+
+#[tauri::command]
+pub fn bootstrap_remove(name: String) -> Result<()> {
+    crate::bootstrap::remove(&name).map_err(AppError::Other)
 }

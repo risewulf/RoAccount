@@ -665,3 +665,5 @@ tr.acc-row[draggable="true"] { cursor: grab; }
 .mtile .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.78)); display: flex; justify-content: space-between; gap: 8px; text-align: left; }
 .mtile .cap span { opacity: 0.8; font-size: 12.5px; }
 .kb-row .kbs { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+.boot-prog { padding: 4px 22px 18px; display: grid; gap: 8px; }

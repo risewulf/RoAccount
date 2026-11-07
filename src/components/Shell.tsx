@@ -6,7 +6,7 @@ import { tick } from "../lib/ui";
 import { BrandMark } from "./Brand";
 import { Avatar } from "./Avatar";
 import {
-  IconBell, IconChevDown, IconClock, IconCode, IconDatabase, IconDiscord, IconGauge, IconGear, IconGrid, IconHome, IconInfo,
+  IconBell, IconChevDown, IconClock, IconCode, IconDatabase, IconDownload, IconDiscord, IconGauge, IconGear, IconGrid, IconHome, IconInfo,
   IconKeyboard, IconLock, IconMax, IconMin, IconMoon, IconPalette, IconPlay, IconPulse, IconRefresh, IconRocket,
   IconServer, IconShield, IconShrink, IconSidebar, IconSun, IconTerminal, IconTool, IconUser, IconX,
 } from "./icons";
@@ -33,6 +33,7 @@ export const SETTINGS_NAV: NavDef[] = [
   { id: "s-apparence", label: "Appearance", icon: <IconPalette /> },
   { id: "s-securite", label: "Security", icon: <IconShield /> },
   { id: "s-donnees", label: "Data", icon: <IconDatabase /> },
+  { id: "s-roblox", label: "Roblox", icon: <IconDownload /> },
   { id: "s-apropos", label: "About", icon: <IconInfo /> },
   { id: "s-raccourcis", label: "Shortcuts", icon: <IconKeyboard /> },
 ];

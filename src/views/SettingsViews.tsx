@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
-import type { RobloxVersion, Settings } from "../lib/types";
+import type { BootProgress, BootStatus, RobloxVersion, Settings } from "../lib/types";
 import { Group, NumInput, Row, Seg, SettingsPage, Toggle } from "../components/Controls";
 import { SHORTCUT_ACTIONS, bindingsOf, comboFromEvent, comboOf as bindingOf, validCombo } from "../lib/shortcuts";
 
@@ -380,6 +380,102 @@ export function RaccourcisSettings() {
           </div>
         </div>
       </div>
+    </SettingsPage>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Roblox (RoAccount bootstrapper)                                      */
+/* ------------------------------------------------------------------ */
+
+function fmtDate(t: number): string {
+  return t ? new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+}
+
+export function RobloxSettings() {
+  const store = useStore();
+  const { settings: s } = store;
+  const set = (p: Partial<Settings>) => store.updateSettings(p);
+  const [st, setSt] = useState<BootStatus | null>(null);
+  const [prog, setProg] = useState<BootProgress | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => api.bootstrapStatus().then(setSt).catch((e) => store.toast(String(e)));
+  useEffect(() => {
+    void refresh();
+    let un: () => void = () => {};
+    let gone = false;
+    void api.onBootstrap((p) => setProg(p)).then((f) => { if (gone) f(); else un = f; });
+    return () => { gone = true; un(); };
+  }, []); // eslint-disable-line
+
+  async function install(version?: string) {
+    setBusy(true);
+    setProg({ stage: "download", done: 0, total: 1, item: "" });
+    try { await api.bootstrapInstall(version); store.toast("Roblox is installed and ready."); }
+    catch (e) { store.toast(String(e)); }
+    finally { setBusy(false); setProg(null); void refresh(); }
+  }
+  async function toggle(on: boolean) {
+    set({ ownRoblox: on });
+    if (on && st && st.installed.length === 0) await install();
+  }
+
+  const upToDate = !!(st?.latest && st.installed.some((v) => v.name === st.latest));
+  const pct = prog && prog.total ? Math.min(100, Math.round((prog.done / prog.total) * 100)) : 0;
+  const mb = (n: number) => (n / 1048576).toFixed(0);
+
+  return (
+    <SettingsPage title="Roblox">
+      <Group title="RoAccount bootstrapper">
+        <Row title="Run Roblox with RoAccount" desc="RoAccount downloads, updates and starts Roblox itself, so Roblox's own launcher is not needed. If something goes wrong, it falls back to the official launcher." explain="Roblox is installed from Roblox's own servers into RoAccount's folder, next to (not over) the official install. Your graphics settings (FFlags) follow every new version. Close every Roblox client before starting RoAccount for multi-instance to work.">
+          <Toggle on={s.ownRoblox} label="Run Roblox with RoAccount" disabled={busy} onChange={(v) => void toggle(v)} />
+        </Row>
+        <Row title="Roblox version" desc={st ? `${st.current ?? "Not installed"}${st.latest_number ? ` · latest ${st.latest_number}` : ""}${upToDate ? " · up to date" : ""}` : "Checking…"}>
+          <button className="btn solid" disabled={busy || upToDate || !st} onClick={() => void install()}>{busy ? "Installing…" : st && st.installed.length === 0 ? "Install Roblox" : upToDate ? "Up to date" : "Update"}</button>
+        </Row>
+        {busy && prog && (
+          <div className="boot-prog" aria-live="polite">
+            <div className="bar" style={{ width: "100%", height: 8 }}><i style={{ width: pct + "%" }} /></div>
+            <span className="sub">{prog.stage === "extract" ? `Unpacking ${prog.item}…` : prog.stage === "finish" ? "Finishing…" : `Downloading… ${pct}% (${mb(prog.done)} of ${mb(prog.total)} MB)`}</span>
+          </div>
+        )}
+        <Row title="Update automatically" desc="Install a new Roblox version as soon as it is out. Checked every 30 minutes while RoAccount is open.">
+          <Toggle on={s.ownRobloxAutoUpdate} label="Update automatically" onChange={(v) => set({ ownRobloxAutoUpdate: v })} />
+        </Row>
+        <Row title="Pinned version" desc="Stay on one version instead of following the newest. Automatic updates pause while a version is pinned.">
+          <select className="sort-select" value={s.ownRobloxPin} onChange={(e) => set({ ownRobloxPin: e.target.value })} aria-label="Pinned version">
+            <option value="">Newest</option>
+            {(st?.installed ?? []).map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
+          </select>
+        </Row>
+        <Row title="Keep old versions" desc="How many versions stay on the disk (about 350 MB each).">
+          <NumInput value={s.ownRobloxKeep} onChange={(n) => set({ ownRobloxKeep: n })} min={1} max={10} width={70} />
+        </Row>
+        <Row title="Channel" desc="Leave empty for the normal Roblox. Other channels are for testing and may not work." explain="This is Roblox's deployment channel name (for example a test channel). Only change it if you know what you are doing.">
+          <input className="txt mono" style={{ width: 200 }} value={s.robloxChannel} onChange={(e) => set({ robloxChannel: e.target.value.trim() })} placeholder="production" aria-label="Channel" spellCheck={false} />
+        </Row>
+      </Group>
+
+      <Group title="Installed versions">
+        {(st?.installed ?? []).length === 0 && <div className="placeholder">Nothing installed yet.</div>}
+        {(st?.installed ?? []).map((v) => (
+          <Row key={v.name} title={v.name} desc={`${v.size_mb} MB · installed ${fmtDate(v.installed_at)}`} mono>
+            {v.name === st?.current && <span className="tag brand">In use</span>}
+            <button className="btn sm danger" disabled={busy || v.name === st?.current} onClick={() => void api.bootstrapRemove(v.name).then(() => { store.toast("Version removed."); void refresh(); }).catch((e) => store.toast(String(e)))}>Remove</button>
+          </Row>
+        ))}
+      </Group>
+
+      <Group title="Mods">
+        <Row title="Apply mods" desc="Files in the Mods folder are copied over Roblox's files before each launch, with the same folder layout (for example content/sounds/…). Programs and scripts are ignored." explain="Use it for cosmetic changes such as sounds, fonts or textures. Roblox may change its files at any update, and it does not support modified files: use at your own risk. Graphics flags live in the Performance page.">
+          <Toggle on={s.ownRobloxMods} label="Apply mods" onChange={(v) => set({ ownRobloxMods: v })} />
+          <button className="btn" onClick={() => void api.openPath("roblox-mods").catch((e) => store.toast(String(e)))}>Open mods folder</button>
+        </Row>
+        <Row title="RoAccount's Roblox folder" desc={st?.root ?? "%LOCALAPPDATA%\\RoAccount\\Roblox"} mono>
+          <button className="btn" onClick={() => void api.openPath("roblox-own").catch((e) => store.toast(String(e)))}>Open</button>
+        </Row>
+      </Group>
     </SettingsPage>
   );
 }

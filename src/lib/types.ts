@@ -148,6 +148,12 @@ export interface Settings {
   alertAfterMin: number;
   notifyWindows: boolean;
   richPresence: boolean;
+  ownRoblox: boolean;
+  ownRobloxPin: string;
+  ownRobloxKeep: number;
+  ownRobloxAutoUpdate: boolean;
+  ownRobloxMods: boolean;
+  robloxChannel: string;
   alertDeadCookie: boolean;
   dailySummary: boolean;
   dailySummaryHour: number;
@@ -275,6 +281,12 @@ export const DEFAULT_SETTINGS: Settings = {
   alertAfterMin: 0,
   notifyWindows: false,
   richPresence: false,
+  ownRoblox: false,
+  ownRobloxPin: "",
+  ownRobloxKeep: 2,
+  ownRobloxAutoUpdate: true,
+  ownRobloxMods: true,
+  robloxChannel: "",
   alertDeadCookie: true,
   dailySummary: false,
   dailySummaryHour: 21,
@@ -312,7 +324,7 @@ export interface RobloxVersion { installed: string | null; latest: string | null
 export type ViewId =
   | "accueil" | "jouer" | "comptes" | "perf"
   | "serveurs" | "moniteur" | "historique" | "discord" | "debug" | "macros" | "outils"
-  | "s-lancement" | "s-apparence" | "s-securite" | "s-donnees" | "s-apropos" | "s-raccourcis";
+  | "s-lancement" | "s-apparence" | "s-securite" | "s-donnees" | "s-roblox" | "s-apropos" | "s-raccourcis";
 
 export interface MacroInfo { name: string; code: string; }
 export interface RunningMacro { name: string; pid: number; }
@@ -338,3 +350,17 @@ export interface PrivateServer {
   link: string | null;
   active: boolean | null;
 }
+
+/** RoAccount bootstrapper: Roblox installed and kept up to date by RoAccount itself. */
+export interface BootVersion { name: string; size_mb: number; installed_at: number; }
+export interface BootStatus {
+  enabled: boolean;
+  root: string;
+  mods: string;
+  installed: BootVersion[];
+  current: string | null;
+  latest: string | null;
+  latest_number: string | null;
+  busy: boolean;
+}
+export interface BootProgress { stage: "download" | "extract" | "finish"; done: number; total: number; item: string; }

@@ -108,7 +108,7 @@ fn build_uri(ticket: &str, place_launcher: &str) -> String {
     format!(
         "roblox-player:1+launchmode:play+gameinfo:{ticket}\
          +launchtime:{launch_time}+placelauncherurl:{encoded}\
-         +robloxLocale:fr_fr+gameLocale:fr_fr+channel:{tail}"
+         +robloxLocale:en_us+gameLocale:en_us+channel:{tail}"
     )
 }
 
@@ -156,6 +156,14 @@ fn urlencode(s: &str) -> String {
 
 /// Ouvre l'URI de protocole via le shell du système.
 fn open_protocol(uri: &str) -> Result<()> {
+    // RoAccount's own Roblox (bootstrapper): start the player directly. If it isn't installed or fails to start,
+    // fall back to the official launcher below so a launch never gets lost.
+    if crate::bootstrap::enabled() {
+        match crate::bootstrap::launch_uri(uri) {
+            Ok(_) => return Ok(()),
+            Err(e) => eprintln!("RoAccount's Roblox could not start ({e}); using the official launcher"),
+        }
+    }
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;

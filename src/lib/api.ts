@@ -1,7 +1,7 @@
 import {
   DEFAULT_SETTINGS, type AccountMeta, type BackupInfo, type FriendReport, type ImportReport, type LogEntry,
   type MacroInfo, type Metrics, type NewsItem, type PcInfo, type PrivateServer, type ProcInfo, type RobloxVersion,
-  type RunningMacro, type ServerInfo, type Settings, type TrashItem, type VaultStatus,
+  type BootProgress, type BootStatus, type RunningMacro, type ServerInfo, type Settings, type TrashItem, type VaultStatus,
 } from "./types";
 import { seedDemoRobux } from "./robux";
 
@@ -48,6 +48,19 @@ export const api = {
   ) => invoke<AccountMeta>("update_account", { id, ...patch }),
   refreshAccount: (id: string) =>
     invoke<AccountMeta>("refresh_account", { id }),
+  bootstrapStatus: () => invoke<BootStatus>("bootstrap_status"),
+  bootstrapInstall: (version?: string) => invoke<string>("bootstrap_install", { version: version ?? null }),
+  bootstrapRemove: (name: string) => invoke<void>("bootstrap_remove", { name }),
+  /** Progress of an install/update of RoAccount's Roblox. */
+  onBootstrap: async (cb: (p: BootProgress) => void): Promise<() => void> => {
+    if (!inTauri) {
+      const h = (ev: Event) => cb((ev as CustomEvent).detail);
+      window.addEventListener("roa-mock-boot", h);
+      return () => window.removeEventListener("roa-mock-boot", h);
+    }
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<BootProgress>("bootstrap", (e) => cb(e.payload));
+  },
   listTrash: () => invoke<TrashItem[]>("list_trash"),
   restoreAccount: (id: string) => invoke<AccountMeta>("restore_account", { id }),
   /** Deletes one trashed account for good, or the whole trash when no id is given. */
@@ -132,7 +145,7 @@ export const api = {
   windowAction: (pid: number | null, action: "show" | "minimize") => invoke<number>("window_action", { pid, action }),
   applyGraphics: (enabled: boolean, opts: Record<string, unknown>) => invoke<string>("apply_graphics", { enabled, opts }),
   robloxVersion: () => invoke<RobloxVersion>("roblox_version"),
-  openPath: (kind: "data" | "exports" | "roblox-logs") => invoke<void>("open_path", { kind }),
+  openPath: (kind: "data" | "exports" | "roblox-logs" | "roblox-own" | "roblox-mods") => invoke<void>("open_path", { kind }),
   saveExport: (name: string, content: string) => invoke<string>("save_export", { name, content }),
   cleanRobloxLogs: () => invoke<number>("clean_roblox_logs"),
   cleanRobloxCache: (dryRun: boolean) => invoke<number>("clean_roblox_cache", { dryRun }),
@@ -187,6 +200,9 @@ const mockAccounts: AccountMeta[] = [
   demo("RocketReal", "Rocket", "Alts", { pres: "Offline", robux: 40, friends: 18, health: "cookie_expired" }),
 ];
 
+const mockBoot: { name: string; size_mb: number; installed_at: number }[] = [
+  { name: "version-3b9f1c0e7a2d4c11", size_mb: 341, installed_at: Math.floor(Date.now() / 1000) - 6 * 86400 },
+];
 const mockTrash: TrashItem[] = [];
 const mockTrashed: AccountMeta[] = [];
 if (!inTauri) mockAccounts.forEach((a) => seedDemoRobux(a.id, a.robux ?? 0));
@@ -413,6 +429,19 @@ async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promi
     case "remove_account": {
       const i = mockAccounts.findIndex((a) => a.id === args?.id);
       if (i >= 0) { const [a] = mockAccounts.splice(i, 1); mockTrash.push({ id: a.id, username: a.username, display_name: a.display_name, deleted_at: Date.now() / 1000 }); mockTrashed.push(a); }
+      return undefined as T;
+    }
+    case "bootstrap_status":
+      return { enabled: DEFAULT_SETTINGS.ownRoblox, root: "%LOCALAPPDATA%\\RoAccount\\Roblox", mods: "%LOCALAPPDATA%\\RoAccount\\Roblox\\Mods", installed: mockBoot.map((v) => ({ ...v })), current: mockBoot[0]?.name ?? null, latest: "version-f0ea5da9412f4e35", latest_number: "0.746.0.7461267", busy: false } as T;
+    case "bootstrap_install": {
+      const total = 190_000_000;
+      for (let i = 0; i <= 20; i++) { window.dispatchEvent(new CustomEvent("roa-mock-boot", { detail: { stage: i < 20 ? "download" : "extract", done: (total * i) / 20, total, item: "RobloxApp.zip" } })); await new Promise((r) => setTimeout(r, 120)); }
+      if (!mockBoot.some((v) => v.name === "version-f0ea5da9412f4e35")) mockBoot.unshift({ name: "version-f0ea5da9412f4e35", size_mb: 344, installed_at: Math.floor(Date.now() / 1000) });
+      return "version-f0ea5da9412f4e35" as T;
+    }
+    case "bootstrap_remove": {
+      const i = mockBoot.findIndex((v) => v.name === args?.name);
+      if (i >= 0) mockBoot.splice(i, 1);
       return undefined as T;
     }
     case "list_trash":

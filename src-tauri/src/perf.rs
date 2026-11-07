@@ -170,11 +170,29 @@ pub fn latest_version_dir() -> Option<std::path::PathBuf> {
     best.map(|(_, p)| p)
 }
 
-/// Applique (ou retire, si `enabled` est faux) les réglages graphiques. Renvoie le fichier écrit.
+/// Applique (ou retire, si `enabled` est faux) les réglages graphiques sur Roblox officiel ET sur la version
+/// installée par RoAccount. Renvoie le dernier fichier écrit.
 pub fn apply_graphics(enabled: bool, o: &GraphicsOpts) -> Result<String, String> {
+    let mut dirs: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(name) = crate::bootstrap::current_name() {
+        dirs.push(crate::bootstrap::version_dir(&name));
+    }
+    if let Some(d) = latest_version_dir() {
+        dirs.push(d);
+    }
+    if dirs.is_empty() {
+        return Err("Roblox is not installed (no version found).".into());
+    }
+    let mut last = String::new();
+    for d in dirs {
+        last = apply_graphics_in(&d, enabled, o)?;
+    }
+    Ok(last)
+}
+
+fn apply_graphics_in(dir: &std::path::Path, enabled: bool, o: &GraphicsOpts) -> Result<String, String> {
     use serde_json::{json, Map, Value};
 
-    let dir = latest_version_dir().ok_or("Roblox is not installed (no version found).")?;
     let cs = dir.join("ClientSettings");
     let file = cs.join("ClientAppSettings.json");
 
@@ -243,8 +261,11 @@ pub struct RobloxVersion {
 }
 
 pub async fn roblox_version() -> RobloxVersion {
-    let installed = latest_version_dir()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()));
+    let installed = if crate::bootstrap::enabled() {
+        crate::bootstrap::current_name()
+    } else {
+        latest_version_dir().and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+    };
     let latest = async {
         let r = reqwest::Client::new()
             .get("https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer")

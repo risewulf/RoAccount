@@ -1,4 +1,5 @@
 mod background;
+mod bootstrap;
 mod capture;
 mod commands;
 mod discord;
@@ -37,6 +38,7 @@ pub fn run() {
                 let st = app.state::<AppState>();
                 let s = st.settings.lock().unwrap();
                 launch::set_extra_args(s.extra.get("launchArgs").and_then(|v| v.as_str()).unwrap_or(""));
+                bootstrap::configure(s.own_roblox, &s.own_roblox_pin, s.own_roblox_mods);
             }
             {
                 let st = app.state::<AppState>();
@@ -149,6 +151,9 @@ pub fn run() {
             commands::discord_post,
             commands::notify_desktop,
             commands::set_rich_presence,
+            commands::bootstrap_status,
+            commands::bootstrap_install,
+            commands::bootstrap_remove,
         ])
         .build(tauri::generate_context!())
         .expect("error while starting RoAccount")
